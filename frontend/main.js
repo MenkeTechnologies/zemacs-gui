@@ -66,11 +66,13 @@
     // give the login shell a moment to come up, then replace it with the BUNDLED editor (sidecar path,
     // with the sidecar dir prepended to PATH so the bundled stryke is reachable too) — never a bare
     // `zemacs` off the user's PATH, so the shipped .app is self-contained.
+    // `--ide` so the GUI boots straight into the workbench (toolbar + tool windows visible),
+    // since the windowed app IS the IDE. (F2 still toggles it.)
     setTimeout(function () {
       T.invoke("zemacs_exec_command").then(function (cmd) {
-        T.invoke("terminal_write", { data: "exec " + (cmd || "zemacs") + "\n" }).catch(function () {});
+        T.invoke("terminal_write", { data: "exec " + (cmd || "zemacs") + " --ide\n" }).catch(function () {});
       }).catch(function () {
-        T.invoke("terminal_write", { data: "exec zemacs\n" }).catch(function () {});
+        T.invoke("terminal_write", { data: "exec zemacs --ide\n" }).catch(function () {});
       });
     }, 800);
   }

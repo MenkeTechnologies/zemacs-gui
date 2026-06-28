@@ -61,6 +61,11 @@
     nextBuffer: function () { ex("buffer-next"); },
     prevBuffer: function () { ex("buffer-previous"); },
 
+    // Run the current file / start debugging — the IDE binds F5/F6 globally (mode-independent),
+    // so we send the raw function-key sequences straight to the PTY (no Esc dance needed).
+    run:   function () { ptyWrite("\x1b[15~"); },  // F5 → IDE: smart-run current file
+    debug: function () { ptyWrite("\x1b[17~"); },  // F6 → IDE: launch debugger
+
     hsplit: function () { ex("hsplit"); },
     vsplit: function () { ex("vsplit"); },
     closeSplit: function () { nkeys("\x17q"); }, // C-w q
@@ -74,7 +79,7 @@
     tutor: function () { nkeys(":tutor\r"); },
 
     focusEditor: function () { var c = document.getElementById("terminalContainer"); if (c) { var ta = c.querySelector("textarea"); if (ta) ta.focus(); } },
-    restartEditor: function () { invoke("terminal_kill").then(function () { if (typeof window.showTerminal === "function") window.showTerminal(); setTimeout(function () { invoke("zemacs_exec_command").then(function (cmd) { ptyWrite("exec " + (cmd || "zemacs") + "\r"); }).catch(function () { ptyWrite("exec zemacs\r"); }); }, 800); }).catch(function () {}); },
+    restartEditor: function () { invoke("terminal_kill").then(function () { if (typeof window.showTerminal === "function") window.showTerminal(); setTimeout(function () { invoke("zemacs_exec_command").then(function (cmd) { ptyWrite("exec " + (cmd || "zemacs") + " --ide\r"); }).catch(function () { ptyWrite("exec zemacs --ide\r"); }); }, 800); }).catch(function () {}); },
   };
 
   // ── menu bar (ZGui.menubar → ZGui.contextMenu) ──────────────────────────────────────────────────
@@ -166,6 +171,8 @@
     else if (k === "g") act.findNext();
     else if (k === "}" || (k === "]" && shift)) act.nextBuffer();
     else if (k === "{" || (k === "[" && shift)) act.prevBuffer();
+    else if (k === "r" && !shift && !ctrl) act.run();     // ⌘R → run current file
+    else if (k === "d" && !shift && !ctrl) act.debug();   // ⌘D → debug
     else handled = false;
     if (handled) { e.preventDefault(); e.stopPropagation(); }
   }
