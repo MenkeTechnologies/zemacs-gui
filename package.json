@@ -4,8 +4,8 @@
   "private": true,
   "description": "zemacs-gui — desktop GUI wrapper around the zemacs editor (Helix fork). Runs the zemacs binary in an embedded PTY terminal with the shared zgui-core baseline.",
   "scripts": {
-    "dev": "node scripts/copy-embed-terminal.mjs && tauri dev",
-    "build": "node scripts/copy-embed-terminal.mjs && tauri build",
+    "dev": "pnpm install && node scripts/copy-embed-terminal.mjs && tauri dev",
+    "build": "pnpm install && node scripts/copy-embed-terminal.mjs && tauri build",
     "tauri": "tauri",
     "test": "bash scripts/test.sh",
     "test:js": "node --test frontend/menu.test.cjs",
