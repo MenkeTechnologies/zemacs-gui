@@ -74,6 +74,8 @@
       }).catch(function () {
         T.invoke("terminal_write", { data: "exec zemacs --ide\n" }).catch(function () {});
       });
+      // once the editor is up, sync its theme to the saved zgui-core colorscheme (unified palette)
+      setTimeout(function () { if (typeof window.zemacsSyncTheme === "function") window.zemacsSyncTheme(); }, 2500);
     }, 800);
   }
   function restart() {

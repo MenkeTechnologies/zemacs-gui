@@ -1,6 +1,6 @@
 {
   "name": "zemacs-gui",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "zemacs-gui — desktop GUI wrapper around the zemacs editor (Helix fork). Runs the zemacs binary in an embedded PTY terminal with the shared zgui-core baseline.",
   "scripts": {
