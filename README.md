@@ -36,6 +36,7 @@ zemacs-gui/
 │   ├─ window_ops.rs     fullscreen / translucency (blur) / focus
 │   ├─ project.rs        fuzzy find-files, find-in-files (regex), tree file ops, recent files,
 │   │                    file stats, git status/branch/diff — the project workbench backend
+│   ├─ editor_tools.rs   bookmarks, project search & replace, go-to-symbol, TODO/markers
 │   └─ open_intake.rs    CLI / Finder / mvim:// file opens → :open in the PTY
 ├─ crates/
 │   ├─ zemacs            the editor — vendored submodule, built → bundled sidecar
@@ -61,7 +62,18 @@ single source of truth.
 - **Quick Open** (`⌘P`) — fuzzy file finder over the project tree (VCS/build dirs pruned), boundary-
   and run-aware ranking; type to filter, `↑`/`↓`/`Enter` to open.
 - **Find in Files** (`⇧⌘J`) — project-wide text search with **regex**, **match-case** and
-  **whole-word** toggles; click a match to jump to its exact `line:col`.
+  **whole-word** toggles; click a match to jump to its exact `line:col`, or **★** to bookmark it.
+- **Search & Replace** (`⇧⌘H`) — project-wide replace with **regex** (including `$1` capture
+  references), match-case and whole-word; a live **preview** of every before → after line, then
+  **Replace All** rewrites the matching files on disk (confirmed first). Binary/oversized files are
+  skipped, like the search.
+- **Go to Symbol** (`⇧⌘O`) — a workspace outline picker: functions, structs/classes/enums/traits,
+  types, modules, methods and Markdown headings across the tree (Rust, JS/TS, Python, Go, C/C++,
+  Ruby, shell, Lua, stryke/Perl, Markdown); type to filter, `Enter` to jump.
+- **TODO / Markers** (`⇧⌘T`) — a scan for `TODO` / `FIXME` / `HACK` / `XXX` / `BUG` / `NOTE` /
+  `OPTIMIZE` / `WARNING` comment markers across the tree; filter and jump to each.
+- **Bookmarks** (`⌘B`) — a persisted list of named `file:line` marks (survives restarts); add from a
+  file picker or the **★** button on a search hit, jump on click, remove per-row or **Clear**.
 - **Recent Files** (`⌘E`) — a persisted MRU list (survives restarts; every open, from any route, is
   recorded), filterable, with **Clear**.
 - **Project Files** (`⇧⌘E`) — a tree file manager: **New File / New Folder**, **Rename**,

@@ -3,6 +3,7 @@
 // MacVim-style GUI helpers (fs/window/open-intake), and wires the PTY's output/exit to the webview.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod editor_tools;
 mod fs_ops;
 mod open_intake;
 mod project;
@@ -50,22 +51,38 @@ fn main() {
             project::git_branch,
             project::git_status,
             project::git_file_diff,
+            // Editor tools (panels.js): bookmarks, project search & replace, go-to-symbol, markers.
+            editor_tools::bookmark_add,
+            editor_tools::bookmark_list,
+            editor_tools::bookmark_remove,
+            editor_tools::bookmark_clear,
+            editor_tools::replace_project,
+            editor_tools::project_symbols,
+            editor_tools::scan_markers,
         ])
         .setup(|app| {
             // Ensure the app data + log dirs exist and seed the log file, so the appShell
             // Diagnostics buttons (open log / log dir / data dir) always have a target.
             {
                 use tauri::Manager;
-                if let Ok(d) = app.path().app_data_dir() { let _ = std::fs::create_dir_all(&d); }
+                if let Ok(d) = app.path().app_data_dir() {
+                    let _ = std::fs::create_dir_all(&d);
+                }
                 if let Ok(d) = app.path().app_log_dir() {
                     let _ = std::fs::create_dir_all(&d);
-                    let _ = std::fs::OpenOptions::new().create(true).append(true).open(d.join("zemacs.log"));
+                    let _ = std::fs::OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open(d.join("zemacs.log"));
                 }
             }
 
             // Cold launch with file args (`zemacs-gui file…`) — queue them for the frontend to drain.
             let handle = app.handle().clone();
-            open_intake::ingest(&handle, open_intake::paths_from_argv(&std::env::args().collect::<Vec<_>>()));
+            open_intake::ingest(
+                &handle,
+                open_intake::paths_from_argv(&std::env::args().collect::<Vec<_>>()),
+            );
 
             // mvim:// / zemacs:// URLs delivered while running.
             #[cfg(desktop)]

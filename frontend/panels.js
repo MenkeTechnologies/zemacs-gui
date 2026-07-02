@@ -109,6 +109,18 @@
           b.textContent = it.badge;
           row.insertBefore(b, p);
         }
+        // Optional per-row action button (e.g. bookmark / remove) — doesn't trigger the row pick.
+        if (it.action) {
+          var ab = document.createElement("button");
+          ab.type = "button";
+          ab.className = "zp-open-btn zp-row-action";
+          ab.textContent = it.action.label;
+          if (it.action.title) ab.title = it.action.title;
+          (function (action) {
+            ab.addEventListener("click", function (e) { e.stopPropagation(); if (typeof action.run === "function") action.run(); });
+          })(it.action);
+          row.appendChild(ab);
+        }
         var pick = function () { dlg.close(); if (typeof it.onPick === "function") it.onPick(); };
         row.addEventListener("click", pick);
         list.appendChild(row);
@@ -216,6 +228,14 @@
                 primary: h.text || "(match)",
                 secondary: h.rel + ":" + h.line,
                 onPick: function () { openInEditor(h.path, h.line, h.col); },
+                action: {
+                  label: "★",
+                  title: T("zemacs.panel.bookmark_line", "Bookmark this line"),
+                  run: function () {
+                    var lbl = (h.text || "").slice(0, 60) + " — " + h.rel + ":" + h.line;
+                    invoke("bookmark_add", { path: h.path, line: h.line, label: lbl }).then(function () { toast(T("zemacs.panel.bookmarked", "Bookmarked")); });
+                  },
+                },
               };
             });
           });
@@ -449,11 +469,216 @@
     });
   }
 
+  // ── ⇧⌘H project-wide search & replace (regex, preview then apply on disk) ─────────────────────────
+  function searchReplace() {
+    if (!window.ZGui || !ZGui.modal) return;
+    getRoot().then(function (root) {
+      var body = document.createElement("div");
+      body.className = "zp-picker zp-replace";
+
+      var find = document.createElement("input");
+      find.type = "text"; find.className = "zp-input"; find.placeholder = T("zemacs.panel.find_ph", "Search text or /regex/…");
+      find.autocomplete = "off"; find.autocapitalize = "off"; find.spellcheck = false; find.setAttribute("autocorrect", "off");
+      var repl = document.createElement("input");
+      repl.type = "text"; repl.className = "zp-input"; repl.placeholder = T("zemacs.panel.replace_ph", "Replace with… ($1 for capture groups)");
+      repl.autocomplete = "off"; repl.autocapitalize = "off"; repl.spellcheck = false; repl.setAttribute("autocorrect", "off");
+      body.appendChild(find);
+      body.appendChild(repl);
+
+      var controls = document.createElement("div");
+      controls.className = "zp-opts";
+      var rx = optToggle(".*", T("zemacs.panel.regex", "Regex"));
+      var ci = optToggle("Aa", T("zemacs.panel.case", "Match case"));
+      var ww = optToggle("\\b", T("zemacs.panel.word", "Whole word"));
+      controls.appendChild(rx.el); controls.appendChild(ci.el); controls.appendChild(ww.el);
+      body.appendChild(controls);
+
+      var count = document.createElement("div");
+      count.className = "zp-count";
+      body.appendChild(count);
+
+      var list = document.createElement("div");
+      list.className = "zp-list";
+      body.appendChild(list);
+
+      var lastResult = null;
+      function opts(apply) {
+        return { regex: rx.on, case_insensitive: !ci.on, whole_word: ww.on, apply: apply, max_results: 1000 };
+      }
+      function renderPreview(res) {
+        lastResult = res;
+        list.textContent = "";
+        (res.hits || []).forEach(function (h) {
+          var row = document.createElement("div");
+          row.className = "zp-row zp-rep-row";
+          var loc = document.createElement("div"); loc.className = "zp-rep-loc"; loc.textContent = h.rel + ":" + h.line;
+          var bef = document.createElement("div"); bef.className = "zp-rep-before"; bef.textContent = h.before;
+          var aft = document.createElement("div"); aft.className = "zp-rep-after"; aft.textContent = "→ " + h.after;
+          row.appendChild(loc); row.appendChild(bef); row.appendChild(aft);
+          row.addEventListener("click", function () { openInEditor(h.path, h.line, h.col); });
+          list.appendChild(row);
+        });
+        var summary = res.files + " " + T("zemacs.panel.files", "files") + " · " + res.total + " " + T("zemacs.panel.matches", "matches");
+        if (res.truncated) summary += " · " + T("zemacs.panel.preview_capped", "preview capped");
+        count.textContent = summary;
+      }
+      var preview = debounce(function () {
+        var query = find.value;
+        if (!query) { list.textContent = ""; count.textContent = ""; lastResult = null; return; }
+        invoke("replace_project", { root: root, query: query, replacement: repl.value, opts: opts(false) })
+          .then(renderPreview, function (err) { count.textContent = String(err); list.textContent = ""; });
+      }, 220);
+      find.addEventListener("input", preview);
+      repl.addEventListener("input", preview);
+      rx.onChange = preview; ci.onChange = preview; ww.onChange = preview;
+
+      function applyAll() {
+        var query = find.value;
+        if (!query || !lastResult || !lastResult.total) { toast(T("zemacs.panel.nothing_to_replace", "Nothing to replace")); return; }
+        ZGui.modal.confirm({
+          title: T("zemacs.panel.replace_all", "Replace All"),
+          message: T("zemacs.panel.replace_confirm", "Rewrite") + " " + lastResult.total + " " +
+            T("zemacs.panel.matches", "matches") + " " + T("zemacs.panel.in", "in") + " " + lastResult.files + " " +
+            T("zemacs.panel.files", "files") + "?",
+        }).then(function (ok) {
+          if (!ok) return;
+          invoke("replace_project", { root: root, query: query, replacement: repl.value, opts: opts(true) }).then(function (res) {
+            toast(T("zemacs.panel.replaced", "Replaced") + " " + res.total + " " + T("zemacs.panel.in", "in") + " " + res.files + " " + T("zemacs.panel.files", "files"));
+            dlg.close();
+            act.focusEditor();
+          }, function (err) { toast(String(err), "error"); });
+        });
+      }
+
+      var dlg = ZGui.modal.open({
+        title: T("zemacs.panel.search_replace", "Search & Replace"),
+        body: body,
+        className: "zp-modal zp-replace-modal",
+        actions: [
+          { label: T("zemacs.panel.replace_all", "Replace All"), close: false, onClick: applyAll },
+          { label: T("zemacs.dialog.close", "Close"), close: true },
+        ],
+      });
+      setTimeout(function () { find.focus(); }, 30);
+    });
+  }
+
+  // ── ⇧⌘O go to symbol (workspace outline: fn / struct / class / heading) ───────────────────────────
+  function gotoSymbol() {
+    getRoot().then(function (root) {
+      var cache = null;
+      pickerModal({
+        title: T("zemacs.panel.goto_symbol", "Go to Symbol"),
+        placeholder: T("zemacs.panel.symbol_ph", "Symbol name…"),
+        eager: true,
+        countFmt: function (n) { return n + " " + T("zemacs.panel.symbols", "symbols"); },
+        rowsFor: function (query) {
+          var p = cache ? Promise.resolve(cache) : invoke("project_symbols", { root: root, limit: 5000 }).then(function (s) { cache = s; return s; });
+          return p.then(function (syms) {
+            var qq = (query || "").toLowerCase();
+            return (syms || []).filter(function (s) { return !qq || s.name.toLowerCase().indexOf(qq) >= 0; }).slice(0, 500).map(function (s) {
+              return { badge: s.kind, primary: s.name, secondary: s.rel + ":" + s.line, onPick: function () { openInEditor(s.path, s.line, s.col); } };
+            });
+          });
+        },
+      });
+    });
+  }
+
+  // ── ⇧⌘T TODO / markers scan (TODO / FIXME / HACK / … across the tree) ─────────────────────────────
+  function markers() {
+    getRoot().then(function (root) {
+      var cache = null;
+      pickerModal({
+        title: T("zemacs.panel.markers", "TODO / Markers"),
+        placeholder: T("zemacs.panel.marker_ph", "Filter markers…"),
+        eager: true,
+        countFmt: function (n) { return n + " " + T("zemacs.panel.markers_n", "markers"); },
+        rowsFor: function (query) {
+          var p = cache ? Promise.resolve(cache) : invoke("scan_markers", { root: root, limit: 5000 }).then(function (m) { cache = m; return m; });
+          return p.then(function (ms) {
+            var qq = (query || "").toLowerCase();
+            return (ms || []).filter(function (m) { return !qq || (m.kind + " " + m.text + " " + m.rel).toLowerCase().indexOf(qq) >= 0; }).slice(0, 800).map(function (m) {
+              return { badge: m.kind, primary: m.text || "(" + m.kind + ")", secondary: m.rel + ":" + m.line, onPick: function () { openInEditor(m.path, m.line, m.col); } };
+            });
+          });
+        },
+      });
+    });
+  }
+
+  // ── ⌘B bookmarks (persisted file:line marks) ─────────────────────────────────────────────────────
+  function promptBookmarkMeta(path, base, onDone) {
+    ZGui.modal.prompt({ title: T("zemacs.panel.bookmark", "Bookmark"), message: T("zemacs.panel.line", "Line:"), value: "1" }).then(function (lineStr) {
+      var line = parseInt(lineStr, 10); if (!line || line < 1) line = 1;
+      ZGui.modal.prompt({ title: T("zemacs.panel.bookmark", "Bookmark"), message: T("zemacs.panel.label", "Label:"), value: base + ":" + line }).then(function (label) {
+        invoke("bookmark_add", { path: path, line: line, label: label || "" }).then(function () {
+          toast(T("zemacs.panel.bookmarked", "Bookmarked"));
+          if (typeof onDone === "function") onDone();
+        }, function (err) { toast(String(err), "error"); });
+      }).catch(function () {});
+    }).catch(function () {});
+  }
+  function addBookmarkFlow(onDone) {
+    getRoot().then(function (root) {
+      pickerModal({
+        title: T("zemacs.panel.bookmark_file", "Bookmark a File"),
+        placeholder: T("zemacs.panel.quick_open_ph", "Fuzzy file name…"),
+        eager: true,
+        rowsFor: function (query) {
+          return invoke("find_files", { root: root, query: query, limit: 300 }).then(function (hits) {
+            return hits.map(function (h) {
+              var slash = h.rel.lastIndexOf("/");
+              var base = slash >= 0 ? h.rel.slice(slash + 1) : h.rel;
+              return { primary: base, secondary: slash >= 0 ? h.rel.slice(0, slash) : "", onPick: function () { promptBookmarkMeta(h.path, base, onDone); } };
+            });
+          });
+        },
+      });
+    });
+  }
+  function bookmarks() {
+    var pm;
+    pm = pickerModal({
+      title: T("zemacs.panel.bookmarks", "Bookmarks"),
+      placeholder: T("zemacs.panel.filter", "Filter…"),
+      eager: true,
+      countFmt: function (n) { return n + " " + T("zemacs.panel.bookmarks_n", "bookmarks"); },
+      actions: [
+        { label: "＋ " + T("zemacs.panel.add_bookmark", "Add"), close: false, onClick: function () { addBookmarkFlow(function () { if (pm && pm.refresh) pm.refresh(); }); } },
+        { label: T("zemacs.panel.clear", "Clear"), close: true, onClick: function () { invoke("bookmark_clear").then(function () { toast(T("zemacs.panel.bookmarks_cleared", "Bookmarks cleared")); }); } },
+        { label: T("zemacs.dialog.cancel", "Cancel"), close: true },
+      ],
+      rowsFor: function (query) {
+        return invoke("bookmark_list").then(function (list) {
+          var qq = (query || "").toLowerCase();
+          return (list || []).filter(function (b) { return !qq || (b.label + " " + b.path).toLowerCase().indexOf(qq) >= 0; }).map(function (b) {
+            var slash = b.path.lastIndexOf("/");
+            return {
+              primary: b.label,
+              secondary: (slash >= 0 ? b.path.slice(slash + 1) : b.path) + ":" + b.line,
+              onPick: function () { openInEditor(b.path, b.line); },
+              action: {
+                label: "✕",
+                title: T("zemacs.panel.remove", "Remove"),
+                run: function () { invoke("bookmark_remove", { path: b.path, line: b.line }).then(function () { if (pm && pm.refresh) pm.refresh(); }); },
+              },
+            };
+          });
+        }, function () { return []; });
+      },
+    });
+  }
+
   // ── palette + shortcuts wiring ──────────────────────────────────────────────────────────────────
   function myPaletteItems() {
     return [
       { label: T("zemacs.menu.project", "Project") + " ▸ " + T("zemacs.panel.quick_open", "Quick Open") + "  ⌘P", run: quickOpen },
       { label: T("zemacs.menu.project", "Project") + " ▸ " + T("zemacs.panel.find_in_files", "Find in Files") + "  ⇧⌘J", run: findInFiles },
+      { label: T("zemacs.menu.project", "Project") + " ▸ " + T("zemacs.panel.search_replace", "Search & Replace") + "  ⇧⌘H", run: searchReplace },
+      { label: T("zemacs.menu.project", "Project") + " ▸ " + T("zemacs.panel.goto_symbol", "Go to Symbol") + "  ⇧⌘O", run: gotoSymbol },
+      { label: T("zemacs.menu.project", "Project") + " ▸ " + T("zemacs.panel.markers", "TODO / Markers") + "  ⇧⌘T", run: markers },
+      { label: T("zemacs.menu.project", "Project") + " ▸ " + T("zemacs.panel.bookmarks", "Bookmarks") + "  ⌘B", run: bookmarks },
       { label: T("zemacs.menu.project", "Project") + " ▸ " + T("zemacs.panel.recent", "Recent Files") + "  ⌘E", run: recentFiles },
       { label: T("zemacs.menu.project", "Project") + " ▸ " + T("zemacs.panel.project_files", "Project Files") + "  ⇧⌘E", run: projectBrowser },
       { label: T("zemacs.menu.project", "Project") + " ▸ " + T("zemacs.panel.git_changes", "Git Changes"), run: gitPanel },
@@ -469,6 +694,10 @@
     else if (k === "e" && e.shiftKey) projectBrowser();
     else if (k === "e" && !e.ctrlKey) recentFiles();
     else if (k === "j" && e.shiftKey) findInFiles();
+    else if (k === "h" && e.shiftKey && !e.ctrlKey) searchReplace();
+    else if (k === "o" && e.shiftKey && !e.ctrlKey) gotoSymbol();
+    else if (k === "t" && e.shiftKey && !e.ctrlKey) markers();
+    else if (k === "b" && !e.ctrlKey) bookmarks();
     else handled = false;
     if (handled) { e.preventDefault(); e.stopPropagation(); }
   }

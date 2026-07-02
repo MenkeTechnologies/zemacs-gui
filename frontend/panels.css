@@ -100,3 +100,13 @@
 }
 
 .zp-browser { min-width: 520px; }
+
+/* per-row action button (bookmark / remove), sits at the far right of a picker row */
+.zp-row-action { margin-left: 8px; padding: 1px 7px; font-size: 11px; }
+
+/* search & replace overlay */
+.zp-replace { min-width: 560px; }
+.zp-rep-row { display: block; }
+.zp-rep-loc { font-size: 11px; color: var(--text-dim, #7a8ba8); font-family: monospace; }
+.zp-rep-before { font-size: 12px; color: var(--accent, #ff2a6d); font-family: monospace; white-space: pre-wrap; word-break: break-all; }
+.zp-rep-after { font-size: 12px; color: var(--green, #39ff14); font-family: monospace; white-space: pre-wrap; word-break: break-all; }

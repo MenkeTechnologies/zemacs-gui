@@ -33,7 +33,8 @@ const PRUNED_DIRS: &[&str] = &[
 
 /// Safety caps so a walk over a huge tree stays bounded and responsive.
 const MAX_WALK_FILES: usize = 200_000;
-const MAX_GREP_FILE_BYTES: u64 = 4 * 1024 * 1024;
+/// Files larger than this are skipped by every content scan (grep, replace, symbols, markers).
+pub(crate) const MAX_GREP_FILE_BYTES: u64 = 4 * 1024 * 1024;
 const BINARY_SNIFF_BYTES: usize = 8192;
 
 fn is_pruned_dir(name: &str) -> bool {
@@ -42,7 +43,7 @@ fn is_pruned_dir(name: &str) -> bool {
 
 /// Iteratively collect files under `root` (breadth-unbounded DFS via an explicit stack — no recursion
 /// depth limit to blow), pruning VCS/build dirs and (optionally) dotfiles. Returns absolute paths.
-fn walk_files(root: &Path, show_hidden: bool) -> Vec<PathBuf> {
+pub(crate) fn walk_files(root: &Path, show_hidden: bool) -> Vec<PathBuf> {
     let mut out = Vec::new();
     let mut stack = vec![root.to_path_buf()];
     while let Some(dir) = stack.pop() {
@@ -205,7 +206,7 @@ pub struct SearchResult {
     pub truncated: bool,
 }
 
-fn looks_binary(bytes: &[u8]) -> bool {
+pub(crate) fn looks_binary(bytes: &[u8]) -> bool {
     bytes.iter().take(BINARY_SNIFF_BYTES).any(|&b| b == 0)
 }
 
