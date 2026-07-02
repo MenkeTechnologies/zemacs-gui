@@ -18,6 +18,11 @@
 }
 .zp-input:focus { border-color: var(--cyan, #05d9e8); }
 
+/* Narrow numeric line-range inputs (Comment/Uncomment start–end); fixed width so flex won't stretch. */
+.zp-line-input { width: 90px; flex: 0 0 auto; }
+/* Diff Revisions: stacked full-width rev/path inputs with a little breathing room between them. */
+.zp-diffrev .zp-input { margin-bottom: 6px; }
+
 .zp-opts { display: flex; gap: 6px; align-items: center; }
 .zp-opt {
   min-width: 30px;

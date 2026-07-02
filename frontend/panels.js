@@ -1259,6 +1259,278 @@
     });
   }
 
+  // ── align columns (align each line on a delimiter, like Emacs align-regexp) ───────────────────────
+  function alignColumns() {
+    pickFileThen(T("zemacs.panel.align_file", "Align Columns: pick a file"), function (path, rel) {
+      var body = document.createElement("div");
+      body.className = "zp-picker";
+      var sep = document.createElement("input");
+      sep.type = "text"; sep.className = "zp-input"; sep.placeholder = T("zemacs.panel.align_delim", "Delimiter to align on (e.g. = or : or //)…");
+      sep.autocomplete = "off"; sep.autocapitalize = "off"; sep.spellcheck = false; sep.setAttribute("autocorrect", "off");
+      body.appendChild(sep);
+      var controls = document.createElement("div");
+      controls.className = "zp-opts";
+      var rx = optToggle(".*", T("zemacs.panel.regex", "Regex"));
+      controls.appendChild(rx.el);
+      body.appendChild(controls);
+      var count = document.createElement("div");
+      count.className = "zp-count";
+      body.appendChild(count);
+
+      function opts(apply) { return { separator: sep.value, regex: rx.on, apply: apply }; }
+      var preview = debounce(function () {
+        if (!sep.value.trim()) { count.textContent = ""; return; }
+        invoke("align_columns", { path: path, opts: opts(false) }).then(function (r) {
+          count.textContent = r.matched_lines + " " + T("zemacs.panel.lines_match", "lines with delimiter")
+            + " · " + r.changed_lines + " " + T("zemacs.panel.will_move", "to re-align")
+            + " · " + (r.differs ? T("zemacs.panel.will_change", "will change") : T("zemacs.panel.no_change", "no change"));
+        }, function (err) { count.textContent = String(err); });
+      }, 200);
+      sep.addEventListener("input", preview);
+      rx.onChange = preview;
+
+      var dlg = ZGui.modal.open({
+        title: T("zemacs.panel.align_columns", "Align Columns") + " · " + rel,
+        body: body,
+        className: "zp-modal",
+        actions: [
+          { label: T("zemacs.panel.apply", "Apply"), close: false, onClick: function () {
+            if (!sep.value.trim()) { toast(T("zemacs.panel.align_need_delim", "Enter a delimiter")); return; }
+            invoke("align_columns", { path: path, opts: opts(true) }).then(function (r) {
+              toast(r.applied ? T("zemacs.panel.aligned", "Aligned") : T("zemacs.panel.no_change", "no change"));
+              if (r.applied) openInEditor(path);
+              dlg.close();
+            }, function (err) { toast(String(err), "error"); });
+          } },
+          { label: T("zemacs.dialog.close", "Close"), close: true },
+        ],
+      });
+      setTimeout(function () { sep.focus(); }, 30);
+    });
+  }
+
+  // ── comment toggle (comment / uncomment a line range with the language prefix) ─────────────────────
+  function commentToggle() {
+    pickFileThen(T("zemacs.panel.comment_file", "Comment/Uncomment: pick a file"), function (path, rel) {
+      invoke("file_stats", { path: path }).then(function (st) {
+        var maxLine = (st && st.lines) ? st.lines : 1;
+        var body = document.createElement("div");
+        body.className = "zp-picker";
+        var rowEl = document.createElement("div");
+        rowEl.className = "zp-opts";
+        var from = document.createElement("input");
+        from.type = "text"; from.className = "zp-input zp-line-input"; from.value = "1"; from.title = T("zemacs.panel.start_line", "Start line");
+        from.autocomplete = "off"; from.spellcheck = false;
+        var to = document.createElement("input");
+        to.type = "text"; to.className = "zp-input zp-line-input"; to.value = String(maxLine); to.title = T("zemacs.panel.end_line", "End line");
+        to.autocomplete = "off"; to.spellcheck = false;
+        var dash = document.createElement("span"); dash.className = "zp-count"; dash.textContent = "–";
+        rowEl.appendChild(from); rowEl.appendChild(dash); rowEl.appendChild(to);
+        body.appendChild(rowEl);
+        var count = document.createElement("div");
+        count.className = "zp-count";
+        count.textContent = maxLine + " " + T("zemacs.panel.lines", "lines");
+        body.appendChild(count);
+
+        function range() { return { start: Math.max(1, parseInt(from.value, 10) || 1), end: Math.max(1, parseInt(to.value, 10) || maxLine) }; }
+        var preview = debounce(function () {
+          var r = range();
+          invoke("comment_toggle", { path: path, startLine: r.start, endLine: r.end, apply: false }).then(function (res) {
+            count.textContent = (res.commented ? T("zemacs.panel.will_comment", "will comment") : T("zemacs.panel.will_uncomment", "will uncomment"))
+              + " " + res.changed_lines + " " + T("zemacs.panel.lines", "lines") + " · " + res.prefix;
+          }, function (err) { count.textContent = String(err); });
+        }, 200);
+        from.addEventListener("input", preview);
+        to.addEventListener("input", preview);
+
+        var dlg = ZGui.modal.open({
+          title: T("zemacs.panel.comment_toggle", "Comment / Uncomment") + " · " + rel,
+          body: body,
+          className: "zp-modal",
+          actions: [
+            { label: T("zemacs.panel.apply", "Apply"), close: false, onClick: function () {
+              var r = range();
+              invoke("comment_toggle", { path: path, startLine: r.start, endLine: r.end, apply: true }).then(function (res) {
+                toast(res.applied ? (res.commented ? T("zemacs.panel.commented", "Commented") : T("zemacs.panel.uncommented", "Uncommented")) : T("zemacs.panel.no_change", "no change"));
+                if (res.applied) openInEditor(path);
+                dlg.close();
+              }, function (err) { toast(String(err), "error"); });
+            } },
+            { label: T("zemacs.dialog.close", "Close"), close: true },
+          ],
+        });
+        preview();
+        setTimeout(function () { from.focus(); }, 30);
+      }, function (err) { toast(String(err), "error"); });
+    });
+  }
+
+  // ── file encoding (detect + transcode charset) ────────────────────────────────────────────────────
+  function fileEncoding() {
+    pickFileThen(T("zemacs.panel.encoding_file", "File Encoding: pick a file"), function (path, rel) {
+      invoke("detect_encoding", { path: path }).then(function (info) {
+        var body = document.createElement("div");
+        body.className = "zp-picker";
+        var head = document.createElement("div");
+        head.className = "zp-git-head";
+        head.textContent = info.encoding + (info.bom ? " (BOM)" : "") + " · " + info.line_ending + " · " + fmtBytes(info.bytes);
+        body.appendChild(head);
+
+        var label = document.createElement("div");
+        label.className = "zp-count";
+        label.textContent = T("zemacs.panel.convert_to", "Convert to:");
+        body.appendChild(label);
+
+        var controls = document.createElement("div");
+        controls.className = "zp-opts";
+        var targets = [["utf-8", "UTF-8"], ["utf-16le", "UTF-16LE"], ["utf-16be", "UTF-16BE"], ["latin1", "Latin-1"]];
+        var chosen = { to: "utf-8" };
+        var toggles = [];
+        targets.forEach(function (t) {
+          var o = optToggle(t[1], t[1]);
+          if (t[0] === chosen.to) { o.on = true; o.el.classList.add("active"); }
+          o.onChange = function () {
+            chosen.to = t[0];
+            toggles.forEach(function (other) { if (other !== o) { other.on = false; other.el.classList.remove("active"); } });
+            o.on = true; o.el.classList.add("active");
+            preview();
+          };
+          toggles.push(o);
+          controls.appendChild(o.el);
+        });
+        body.appendChild(controls);
+
+        var count = document.createElement("div");
+        count.className = "zp-count";
+        body.appendChild(count);
+
+        function preview() {
+          invoke("convert_encoding", { path: path, to: chosen.to, apply: false }).then(function (r) {
+            count.textContent = r.from + " → " + r.to + " · " + fmtBytes(r.bytes_before) + " → " + fmtBytes(r.bytes_after)
+              + " · " + (r.differs ? T("zemacs.panel.will_change", "will change") : T("zemacs.panel.no_change", "no change"));
+          }, function (err) { count.textContent = String(err); });
+        }
+
+        var dlg = ZGui.modal.open({
+          title: T("zemacs.panel.file_encoding", "File Encoding") + " · " + rel,
+          body: body,
+          className: "zp-modal",
+          actions: [
+            { label: T("zemacs.panel.apply", "Apply"), close: false, onClick: function () {
+              invoke("convert_encoding", { path: path, to: chosen.to, apply: true }).then(function (r) {
+                toast(r.applied ? (T("zemacs.panel.converted", "Converted") + " " + r.from + " → " + r.to) : T("zemacs.panel.no_change", "no change"));
+                if (r.applied) openInEditor(path);
+                dlg.close();
+              }, function (err) { toast(String(err), "error"); });
+            } },
+            { label: T("zemacs.dialog.close", "Close"), close: true },
+          ],
+        });
+        preview();
+      }, function (err) { toast(String(err), "error"); });
+    });
+  }
+
+  // ── repo-wide git log (whole history; click a commit for the diff it introduced) ──────────────────
+  function gitLog() {
+    getRoot().then(function (root) {
+      invoke("git_log_repo", { root: root, limit: 400 }).then(function (commits) {
+        var body = document.createElement("div");
+        body.className = "zp-git";
+        var list = document.createElement("div");
+        list.className = "zp-list";
+        var diffPre = document.createElement("pre");
+        diffPre.className = "zp-diff";
+        if (!commits || !commits.length) { var e = document.createElement("div"); e.className = "zp-count"; e.textContent = T("zemacs.panel.no_history", "No history for this file"); list.appendChild(e); }
+        (commits || []).forEach(function (c) {
+          var row = document.createElement("div");
+          row.className = "zp-row";
+          var badge = document.createElement("span");
+          badge.className = "zp-badge";
+          badge.textContent = c.short;
+          var name = document.createElement("span");
+          name.className = "zp-row-primary";
+          name.textContent = (c.refs ? "(" + c.refs + ") " : "") + c.subject;
+          var sec = document.createElement("span");
+          sec.className = "zp-row-secondary";
+          sec.textContent = c.author + " · " + c.date;
+          row.appendChild(badge);
+          row.appendChild(name);
+          row.appendChild(sec);
+          row.addEventListener("click", function () {
+            invoke("git_show_commit", { root: root, hash: c.hash }).then(function (d) { diffPre.textContent = d || T("zemacs.panel.no_diff", "(no diff)"); }, function (err) { diffPre.textContent = String(err); });
+          });
+          list.appendChild(row);
+        });
+        body.appendChild(list);
+        body.appendChild(diffPre);
+        ZGui.modal.open({
+          title: T("zemacs.panel.repo_log", "Repository Log"),
+          body: body,
+          className: "zp-modal zp-git-modal",
+          actions: [{ label: T("zemacs.dialog.close", "Close"), close: true }],
+        });
+      }, function (err) { toast(T("zemacs.panel.not_git", "Not a git repository") + (err ? ": " + err : ""), "error"); });
+    });
+  }
+
+  // ── git commit graph (ASCII branch graph across all refs) ─────────────────────────────────────────
+  function gitGraph() {
+    getRoot().then(function (root) {
+      invoke("git_graph", { root: root, limit: 400 }).then(function (txt) {
+        var body = document.createElement("div");
+        body.className = "zp-git";
+        var pre = document.createElement("pre");
+        pre.className = "zp-diff";
+        pre.textContent = (txt && txt.trim()) ? txt : T("zemacs.panel.no_commits", "(no commits)");
+        body.appendChild(pre);
+        ZGui.modal.open({
+          title: T("zemacs.panel.commit_graph", "Commit Graph"),
+          body: body,
+          className: "zp-modal zp-git-modal",
+          actions: [{ label: T("zemacs.dialog.close", "Close"), close: true }],
+        });
+      }, function (err) { toast(T("zemacs.panel.not_git", "Not a git repository") + (err ? ": " + err : ""), "error"); });
+    });
+  }
+
+  // ── diff two revisions (git diff <a> <b>, optionally scoped to a file) ─────────────────────────────
+  function diffRevisions() {
+    getRoot().then(function (root) {
+      var body = document.createElement("div");
+      body.className = "zp-git zp-diffrev";
+      var a = document.createElement("input");
+      a.type = "text"; a.className = "zp-input"; a.placeholder = T("zemacs.panel.rev_a", "Revision A (e.g. HEAD~5, main, v1.0)…"); a.value = "HEAD~1";
+      a.autocomplete = "off"; a.spellcheck = false;
+      var b = document.createElement("input");
+      b.type = "text"; b.className = "zp-input"; b.placeholder = T("zemacs.panel.rev_b", "Revision B…"); b.value = "HEAD";
+      b.autocomplete = "off"; b.spellcheck = false;
+      var pathI = document.createElement("input");
+      pathI.type = "text"; pathI.className = "zp-input"; pathI.placeholder = T("zemacs.panel.rev_path", "Path (optional, relative)…");
+      pathI.autocomplete = "off"; pathI.spellcheck = false;
+      body.appendChild(a); body.appendChild(b); body.appendChild(pathI);
+      var diffPre = document.createElement("pre");
+      diffPre.className = "zp-diff";
+      body.appendChild(diffPre);
+
+      function run() {
+        if (!a.value.trim() || !b.value.trim()) { diffPre.textContent = T("zemacs.panel.rev_need", "Enter both revisions"); return; }
+        invoke("git_diff_revs", { root: root, revA: a.value.trim(), revB: b.value.trim(), path: pathI.value.trim() || null })
+          .then(function (d) { diffPre.textContent = (d && d.trim()) ? d : T("zemacs.panel.no_diff_revs", "(no differences)"); }, function (err) { diffPre.textContent = String(err); });
+      }
+      var runDeb = debounce(run, 250);
+      a.addEventListener("input", runDeb); b.addEventListener("input", runDeb); pathI.addEventListener("input", runDeb);
+
+      ZGui.modal.open({
+        title: T("zemacs.panel.diff_revs", "Diff Revisions"),
+        body: body,
+        className: "zp-modal zp-git-modal",
+        actions: [{ label: T("zemacs.dialog.close", "Close"), close: true }],
+      });
+      run();
+    });
+  }
+
   // ── palette + shortcuts wiring ──────────────────────────────────────────────────────────────────
   function myPaletteItems() {
     return [
@@ -1277,9 +1549,15 @@
       { label: T("zemacs.menu.project", "Project") + " ▸ " + T("zemacs.panel.sort_lines", "Sort Lines"), run: sortLines },
       { label: T("zemacs.menu.project", "Project") + " ▸ " + T("zemacs.panel.cleanup", "File Cleanup"), run: fileCleanup },
       { label: T("zemacs.menu.project", "Project") + " ▸ " + T("zemacs.panel.batch_rename", "Batch Rename"), run: batchRename },
+      { label: T("zemacs.menu.project", "Project") + " ▸ " + T("zemacs.panel.align_columns", "Align Columns"), run: alignColumns },
+      { label: T("zemacs.menu.project", "Project") + " ▸ " + T("zemacs.panel.comment_toggle", "Comment / Uncomment") + "  ⇧⌘/", run: commentToggle },
+      { label: T("zemacs.menu.project", "Project") + " ▸ " + T("zemacs.panel.file_encoding", "File Encoding"), run: fileEncoding },
       { label: T("zemacs.menu.git", "Git") + " ▸ " + T("zemacs.panel.git_changes", "Git Changes"), run: gitPanel },
       { label: T("zemacs.menu.git", "Git") + " ▸ " + T("zemacs.panel.blame", "Blame") + "  ⇧⌘B", run: function () { gitBlame(); } },
       { label: T("zemacs.menu.git", "Git") + " ▸ " + T("zemacs.panel.history", "File History"), run: function () { gitHistory(); } },
+      { label: T("zemacs.menu.git", "Git") + " ▸ " + T("zemacs.panel.repo_log", "Repository Log"), run: gitLog },
+      { label: T("zemacs.menu.git", "Git") + " ▸ " + T("zemacs.panel.commit_graph", "Commit Graph"), run: gitGraph },
+      { label: T("zemacs.menu.git", "Git") + " ▸ " + T("zemacs.panel.diff_revs", "Diff Revisions"), run: diffRevisions },
       { label: T("zemacs.menu.git", "Git") + " ▸ " + T("zemacs.panel.branches", "Git Branches"), run: gitBranches },
       { label: T("zemacs.menu.git", "Git") + " ▸ " + T("zemacs.panel.stash", "Git Stash"), run: gitStash },
     ];
@@ -1301,6 +1579,7 @@
     else if (k === "i" && e.shiftKey && !e.ctrlKey) snippets();
     else if (k === "b" && e.shiftKey && !e.ctrlKey) gitBlame();
     else if (k === "b" && !e.shiftKey && !e.ctrlKey) bookmarks();
+    else if ((k === "/" || k === "?") && e.shiftKey && !e.ctrlKey) commentToggle();
     else handled = false;
     if (handled) { e.preventDefault(); e.stopPropagation(); }
   }

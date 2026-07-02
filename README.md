@@ -40,6 +40,9 @@ zemacs-gui/
 │   ├─ git_tools.rs      git blame, per-file history + show-commit, stage/unstage/discard, file compare
 │   ├─ git_ext.rs        git branches (list/checkout/create) + stash (save/list/pop/drop/show)
 │   ├─ text_tools.rs     file cleanup/convert, sort lines, find-definition, batch rename
+│   ├─ edit_ops.rs       align columns on a delimiter + language-aware comment toggle
+│   ├─ encoding_ops.rs   detect + transcode a file's character encoding (UTF-8/16, Latin-1)
+│   ├─ git_more.rs       repo-wide log, show-commit, diff two revisions, commit graph
 │   ├─ workbench_ext.rs  persisted snippets + project code-stats (files/lines by extension)
 │   └─ open_intake.rs    CLI / Finder / mvim:// file opens → :open in the PTY
 ├─ crates/
@@ -61,8 +64,8 @@ On top of the MacVim menu surface, the app adds an IDE-style **project workbench
 from the **⌘K command palette** (and dedicated shortcuts). Every result is opened by driving the
 editor (`:open <path>:<line>:<col>`); the OS-side work (walking the tree, grepping, filesystem
 mutations, git) lives in the Rust `project.rs` / `editor_tools.rs` / `git_tools.rs` / `git_ext.rs` /
-`text_tools.rs` / `workbench_ext.rs` commands, so results are fast and the editor stays the single
-source of truth.
+`text_tools.rs` / `edit_ops.rs` / `encoding_ops.rs` / `git_more.rs` / `workbench_ext.rs` commands, so
+results are fast and the editor stays the single source of truth.
 
 - **Quick Open** (`⌘P`) — fuzzy file finder over the project tree (VCS/build dirs pruned), boundary-
   and run-aware ranking; type to filter, `↑`/`↓`/`Enter` to open.
@@ -97,6 +100,15 @@ source of truth.
   whitespace**, **expand tabs → spaces** or **tabify** leading indent, and **ensure a final
   newline**; a preview reports the changed-line count and byte delta before apply. Binary/oversized
   files are skipped, like the search tools.
+- **Align Columns** — align every line of a file on a delimiter (literal or **regex**), the way Emacs
+  `align-regexp` lines up `=` signs, `:` map keys or `//` trailing comments into one column; a preview
+  reports how many lines participate and change before apply.
+- **Comment / Uncomment** (`⇧⌘/`) — toggle line comments over a line range using the language's
+  comment prefix (`//`, `#`, `--`, `;`, `"`, chosen by extension). If every non-blank line is already
+  commented it uncomments, else it comments; the end line is pre-filled to the file length.
+- **File Encoding** — detect a file's character encoding (BOM, **UTF-8**, **UTF-16LE/BE**, **Latin-1**)
+  and line ending, then transcode it to **UTF-8**, **UTF-16LE/BE** or **Latin-1** (UTF-8 output is
+  BOM-free; UTF-16 output is BOM-prefixed); a preview shows the source → target and byte delta.
 - **Snippets** (`⇧⌘I`) — a persisted named text library; pick one to insert it into the editor via
   bracketed paste (multi-line bodies land verbatim, no auto-indent), add / remove / **Clear**.
 - **Git Changes** — the current branch + `git status` list; click a file for its unified **diff**;
@@ -106,6 +118,12 @@ source of truth.
   `--line-porcelain`); click a line to jump there.
 - **File History** — the commit log touching a file (`git log --follow`); click a commit for the
   **diff it introduced** (`git show`), or open the file.
+- **Repository Log** — the whole repo's commit history (`git log`, newest first, with ref
+  decorations); click a commit for the full **diff it introduced across all files** (`git show`).
+- **Commit Graph** — the ASCII branch graph across all refs (`git log --graph --oneline --decorate
+  --all`) in a read-only pane.
+- **Diff Revisions** — a unified **diff between any two revisions** (`git diff <a> <b>`), branches /
+  tags / hashes, optionally scoped to one path; both revisions are flag-guarded.
 - **Compare Files** — a unified **diff** between any two files picked from the tree
   (`git diff --no-index`, so it works outside a repo too).
 - **Git Branches** — the local branches (most-recently-committed first, current flagged); click to

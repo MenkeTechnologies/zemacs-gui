@@ -3,9 +3,12 @@
 // MacVim-style GUI helpers (fs/window/open-intake), and wires the PTY's output/exit to the webview.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod edit_ops;
 mod editor_tools;
+mod encoding_ops;
 mod fs_ops;
 mod git_ext;
+mod git_more;
 mod git_tools;
 mod open_intake;
 mod project;
@@ -93,6 +96,17 @@ fn main() {
             text_tools::sort_file_lines,
             text_tools::find_definition,
             text_tools::batch_rename,
+            // Edit ops (panels.js): align columns on a delimiter + language-aware comment toggle.
+            edit_ops::align_columns,
+            edit_ops::comment_toggle,
+            // Encoding ops (panels.js): detect + transcode a file's character encoding.
+            encoding_ops::detect_encoding,
+            encoding_ops::convert_encoding,
+            // Git more (panels.js): repo-wide log, show-commit, diff two revisions, commit graph.
+            git_more::git_log_repo,
+            git_more::git_show_commit,
+            git_more::git_diff_revs,
+            git_more::git_graph,
         ])
         .setup(|app| {
             // Ensure the app data + log dirs exist and seed the log file, so the appShell
