@@ -158,7 +158,7 @@ The GUI wraps the modal core the way MacVim wraps Vim. Every surface is a **zgui
 action is bridged to the editor by writing an ex-command into the PTY (the GUI never edits files
 itself, it drives `zemacs`). Because zemacs is a Helix fork, MacVim "tabs" map to **buffers**.
 
-- **Menu bar** (`ZGui.menubar`) — File / Edit / Search / View / Buffers / Window / Code / Git / Help.
+- **Menu bar** (`ZGui.menubar`) — File / Edit / Search / View / Buffers / Window / Marks / Code / Git / Help.
 - **Search menu** — in-buffer engine commands (distinct from the file-based Find-in-Files workbench):
   whole-buffer regex Replace (`:%s`, delimiter auto-chosen so a `/` in the pattern is safe),
   case-preserving Replace (vim-abolish `:%S` — `foo/Foo/FOO` → `bar/Bar/BAR`), Count Matches
@@ -168,7 +168,11 @@ itself, it drives `zemacs`). Because zemacs is a Helix fork, MacVim "tabs" map t
 - **Git menu** — zemacs-vcs actions bridged into the PTY: Magit status, stage / unstage file, line
   blame, buffer-vs-HEAD diff, next/previous/reset hunk, stash / pop, and merge-conflict resolution
   (3-pane resolve, keep ours / theirs, next conflict).
-- **Toolbar** (`ZGui.buttonBar`) — new / open / save / buffer nav / find / replace / go-to-def / format / git status / split / full screen.
+- **Marks menu** — vim's position-and-register family bridged into the PTY: set / go-to / list /
+  delete marks (`:mark`, `` `{x} `` goto, `:marks`, `:delmarks[!]`); jumplist back / forward
+  (C-o / C-i), list / clear jumps (`:jumps`, `:clearjumps`), recent-files picker (`:oldfiles`); and
+  registers show / set / clear / clear-all (`:registers`, `:set-register`, `:clear-register`).
+- **Toolbar** (`ZGui.buttonBar`) — new / open / save / buffer nav / find / replace / go-to-def / format / git status / list marks / split / full screen.
 - **Command palette** (`⌘K`) — every menu action, fuzzy-searchable.
 - **Cmd-shortcuts** — ⌘S save, ⇧⌘S Save As, ⌘O open, ⌘W close buffer, ⌘N new, ⌘Z/⇧⌘Z undo/redo,
   ⌘F find, ⌘G/⇧⌘G next/prev, ⌘{ ⌘} buffer cycle, ⌃⌘F full screen.
