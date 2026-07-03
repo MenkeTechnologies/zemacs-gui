@@ -156,9 +156,11 @@ so the embedded terminal is never reflowed.
 
 The GUI wraps the modal core the way MacVim wraps Vim. Every surface is a **zgui-core widget**; each
 action is bridged to the editor by writing an ex-command into the PTY (the GUI never edits files
-itself, it drives `zemacs`). Because zemacs is a Helix fork, MacVim "tabs" map to **buffers**.
+itself, it drives `zemacs`). zemacs (a Helix fork) has **both** buffers and a real vim **tabpage**
+family, so the GUI drives each with its own menu — the **Buffers** menu cycles/closes open buffers,
+the **Tabs** menu manages tabpages (each holds its own split layout).
 
-- **Menu bar** (`ZGui.menubar`) — File / Edit / Search / View / Buffers / Window / Folds / Marks / Code / Git / Help.
+- **Menu bar** (`ZGui.menubar`) — File / Edit / Search / View / Buffers / Window / Tabs / Folds / Marks / Code / Git / Help.
 - **Search menu** — in-buffer engine commands (distinct from the file-based Find-in-Files workbench):
   whole-buffer regex Replace (`:%s`, delimiter auto-chosen so a `/` in the pattern is safe),
   case-preserving Replace (vim-abolish `:%S` — `foo/Foo/FOO` → `bar/Bar/BAR`), Count Matches
@@ -168,6 +170,11 @@ itself, it drives `zemacs`). Because zemacs is a Helix fork, MacVim "tabs" map t
 - **Git menu** — zemacs-vcs actions bridged into the PTY: Magit status, stage / unstage file, line
   blame, buffer-vs-HEAD diff, next/previous/reset hunk, stash / pop, and merge-conflict resolution
   (3-pane resolve, keep ours / theirs, next conflict).
+- **Tabs menu** — vim's tabpage family bridged into the PTY (real tabpages, distinct from buffers —
+  each carries its own split layout): new tab / new tab with file (`:tabnew`, the latter reusing the
+  Open file-browser), close / close-others (`:tabclose` / `:tabonly`), next / previous / first / last
+  (`:tabnext` / `:tabprevious` / `:tabfirst` / `:tablast`), move to end / to position (`:tabmove`),
+  run an ex-command in every tab (`:tabdo`), and the visual list / switch picker (`:tabs`).
 - **Folds menu** — vim's `z`-family fold ops bridged into the PTY: toggle / open / close the fold at
   the cursor (`za` / `zo` / `zc`), open / close all folds (`zR` / `zM`), create a fold over the
   selection (`:fold`), delete one / all folds (`zd` / `zE`), and walk to the next / previous fold
@@ -176,7 +183,7 @@ itself, it drives `zemacs`). Because zemacs is a Helix fork, MacVim "tabs" map t
   delete marks (`:mark`, `` `{x} `` goto, `:marks`, `:delmarks[!]`); jumplist back / forward
   (C-o / C-i), list / clear jumps (`:jumps`, `:clearjumps`), recent-files picker (`:oldfiles`); and
   registers show / set / clear / clear-all (`:registers`, `:set-register`, `:clear-register`).
-- **Toolbar** (`ZGui.buttonBar`) — new / open / save / buffer nav / find / replace / go-to-def / format / git status / list marks / toggle fold / split / full screen.
+- **Toolbar** (`ZGui.buttonBar`) — new / open / save / buffer nav / find / replace / go-to-def / format / git status / list marks / toggle fold / list tabs / split / full screen.
 - **Command palette** (`⌘K`) — every menu action, fuzzy-searchable.
 - **Cmd-shortcuts** — ⌘S save, ⇧⌘S Save As, ⌘O open, ⌘W close buffer, ⌘N new, ⌘Z/⇧⌘Z undo/redo,
   ⌘F find, ⌘G/⇧⌘G next/prev, ⌘{ ⌘} buffer cycle, ⌃⌘F full screen.
@@ -189,9 +196,10 @@ itself, it drives `zemacs`). Because zemacs is a Helix fork, MacVim "tabs" map t
 
 Out of scope (no surface in a PTY/WebView host — they need a native text view): native font rendering
 (ligatures, thin strokes, antialias), Touch Bar, macOS Services, Force Click / dictionary lookup,
-trackpad gesture pseudo-keys, find-pasteboard sharing. A live buffer **tabline** is omitted on
-purpose — a faithful one needs editor↔GUI introspection the raw PTY doesn't expose, and a drifting
-strip would lie about state.
+trackpad gesture pseudo-keys, find-pasteboard sharing. A passive always-on **tabline** strip is
+omitted on purpose — a faithful one needs editor↔GUI introspection the raw PTY doesn't expose, and a
+drifting strip would lie about state; the Tabs menu + the on-demand `:tabs` picker (rendered by the
+editor itself) cover switching without that risk.
 
 ## Bundled binaries (self-contained)
 
