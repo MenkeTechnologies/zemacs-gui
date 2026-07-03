@@ -30,6 +30,8 @@ fn main() {
         .plugin(tauri_plugin_opener::init())
         .manage(terminal::TerminalState::default())
         .manage(open_intake::OpenQueue::default())
+        // Shared file-browser directory watcher state (zpwr-file-browser crate).
+        .manage(zpwr_file_browser::commands::watcher_state())
         .invoke_handler(tauri::generate_handler![
             terminal::terminal_spawn,
             terminal::terminal_write,
@@ -107,6 +109,43 @@ fn main() {
             git_more::git_show_commit,
             git_more::git_diff_revs,
             git_more::git_graph,
+            // Shared multi-pane file browser (zpwr-file-browser crate, `tauri` feature) — the fs_*
+            // commands its front end (fb-backend.js → file-browser.js) calls, plus the watcher.
+            zpwr_file_browser::commands::fs_list_dir,
+            zpwr_file_browser::commands::fs_list_subdirs,
+            zpwr_file_browser::commands::fs_folder_size,
+            zpwr_file_browser::commands::fs_get_info,
+            zpwr_file_browser::commands::fs_make_alias,
+            zpwr_file_browser::commands::fs_hash,
+            zpwr_file_browser::commands::fs_chmod,
+            zpwr_file_browser::commands::fs_grep,
+            zpwr_file_browser::commands::fs_symlink_retarget,
+            zpwr_file_browser::commands::fs_disk_usage,
+            zpwr_file_browser::commands::fs_touch,
+            zpwr_file_browser::commands::fs_compare_dirs,
+            zpwr_file_browser::commands::fs_diff,
+            zpwr_file_browser::commands::fs_find_duplicates,
+            zpwr_file_browser::commands::fs_git_status,
+            zpwr_file_browser::commands::fs_xattrs,
+            zpwr_file_browser::commands::fs_compress,
+            zpwr_file_browser::commands::fs_extract,
+            zpwr_file_browser::commands::fs_secure_delete,
+            zpwr_file_browser::commands::fs_duplicate,
+            zpwr_file_browser::commands::fs_copy_path,
+            zpwr_file_browser::commands::fs_create_dir,
+            zpwr_file_browser::commands::fs_create_file,
+            zpwr_file_browser::commands::delete_file,
+            zpwr_file_browser::commands::move_to_trash,
+            zpwr_file_browser::commands::rename_file,
+            zpwr_file_browser::commands::fs_read_file_base64,
+            zpwr_file_browser::commands::fs_write_file_base64,
+            zpwr_file_browser::commands::fs_read_head,
+            zpwr_file_browser::commands::fs_read_head_bytes,
+            zpwr_file_browser::commands::fs_read_file_bytes,
+            zpwr_file_browser::commands::fs_open_terminal,
+            zpwr_file_browser::commands::fs_open_in_editor,
+            zpwr_file_browser::commands::fs_run_program,
+            zpwr_file_browser::commands::fb_watcher_set,
         ])
         .setup(|app| {
             // Ensure the app data + log dirs exist and seed the log file, so the appShell

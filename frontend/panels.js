@@ -1531,6 +1531,47 @@
     });
   }
 
+  // ── shared file browser (zpwr-file-browser) — full-screen overlay, inited lazily on first open ────
+  // The overlay markup (#fbOverlay/#tabFiles) is inlined in index.html; file-browser.js (loaded via
+  // fb-backend.js) drives it. file-browser.js's keyboard nav guards on `.tab-content.active#tabFiles`,
+  // so we toggle that class; initFileBrowser() is idempotent but we still gate it to first open.
+  var _fbInited = false;
+  function openFileBrowser() {
+    var ov = document.getElementById("fbOverlay");
+    if (!ov) return;
+    ov.hidden = false;
+    var pane = document.getElementById("tabFiles");
+    if (pane) pane.classList.add("active");
+    if (!_fbInited && typeof window.initFileBrowser === "function") {
+      _fbInited = true;
+      try { window.initFileBrowser(); } catch (e) {}
+    }
+    var search = document.getElementById("fileSearchInput");
+    if (search) { try { search.focus(); } catch (e) {} }
+  }
+  function closeFileBrowser() {
+    var ov = document.getElementById("fbOverlay");
+    if (!ov || ov.hidden) return;
+    ov.hidden = true;
+    var pane = document.getElementById("tabFiles");
+    if (pane) pane.classList.remove("active");
+    act.focusEditor();
+  }
+  function toggleFileBrowser() {
+    var ov = document.getElementById("fbOverlay");
+    if (ov && ov.hidden) openFileBrowser(); else closeFileBrowser();
+  }
+  // Exposed for file-browser.js's own injected close control + the overlay bar's ✕.
+  window.toggleFileBrowser = toggleFileBrowser;
+  window.closeFileBrowser = closeFileBrowser;
+  // fb-backend.js routes the browser's "open a file" (openFileDefault) here: load it into the zemacs
+  // buffer and hide the overlay so the editor is visible.
+  window.zemacsOpenPath = function (path) {
+    if (!path) return;
+    closeFileBrowser();
+    openInEditor(path);
+  };
+
   // ── palette + shortcuts wiring ──────────────────────────────────────────────────────────────────
   function myPaletteItems() {
     return [
@@ -1543,6 +1584,7 @@
       { label: T("zemacs.menu.project", "Project") + " ▸ " + T("zemacs.panel.bookmarks", "Bookmarks") + "  ⌘B", run: bookmarks },
       { label: T("zemacs.menu.project", "Project") + " ▸ " + T("zemacs.panel.recent", "Recent Files") + "  ⌘E", run: recentFiles },
       { label: T("zemacs.menu.project", "Project") + " ▸ " + T("zemacs.panel.project_files", "Project Files") + "  ⇧⌘E", run: projectBrowser },
+      { label: T("zemacs.menu.project", "Project") + " ▸ " + T("zemacs.panel.file_browser", "File Browser"), run: openFileBrowser },
       { label: T("zemacs.menu.project", "Project") + " ▸ " + T("zemacs.panel.snippets", "Snippets") + "  ⇧⌘I", run: snippets },
       { label: T("zemacs.menu.project", "Project") + " ▸ " + T("zemacs.panel.project_stats", "Project Stats"), run: projectStats },
       { label: T("zemacs.menu.project", "Project") + " ▸ " + T("zemacs.panel.compare_files", "Compare Files"), run: compareFiles },
@@ -1603,6 +1645,20 @@
 
     // Global ⌘ shortcuts (capture phase; these keys aren't claimed by menu.js/appShell).
     window.addEventListener("keydown", onKey, true);
+
+    // File-browser overlay: the bar's ✕ closes it; Escape closes it too (but not while typing in one
+    // of its inputs, so field-local Escapes — cancel rename, clear filter — still reach file-browser.js).
+    var closeBtn = document.getElementById("fbOverlayClose");
+    if (closeBtn) closeBtn.addEventListener("click", closeFileBrowser);
+    window.addEventListener("keydown", function (e) {
+      if (e.key !== "Escape") return;
+      var ov = document.getElementById("fbOverlay");
+      if (!ov || ov.hidden) return;
+      var t = e.target;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      e.preventDefault();
+      closeFileBrowser();
+    }, false);
   }
 
   window.ZemacsPanels = { mount: mount };

@@ -47,14 +47,18 @@ zemacs-gui/
 │   └─ open_intake.rs    CLI / Finder / mvim:// file opens → :open in the PTY
 ├─ crates/
 │   ├─ zemacs            the editor — vendored submodule, built → bundled sidecar
-│   └─ zpwr-embed-terminal   shared PTY engine (submodule)
+│   ├─ zpwr-embed-terminal   shared PTY engine (submodule)
+│   ├─ zpwr-file-browser     shared multi-pane file browser: `crate/` (fs_* commands, watcher) + webui
+│   └─ zpwr-i18n             shared 27-locale i18n runtime + catalogs (submodule)
 ├─ scripts/
 │   ├─ mvim              terminal launcher (open files in the running window)
+│   ├─ copy-{webui,embed-terminal,i18n,file-browser}.mjs   sync shared webui into frontend/
 │   └─ prepare-{zemacs,stryke}-sidecar.mjs   stage the bundled binaries
 └─ frontend/
    ├─ index.html · main.js      mounts ZGui.appShell + the fullscreen terminal
    ├─ menu.js                   the MacVim GUI surface (all zgui widgets → PTY)
    ├─ panels.js · panels.css    the project workbench overlays (quick-open, find-in-files, …)
+   ├─ fb-backend.js             Tauri fs bridge + host shims for the shared file browser
    └─ lib/zgui-core             the shared widget library (submodule)
 ```
 
@@ -90,6 +94,16 @@ results are fast and the editor stays the single source of truth.
 - **Project Files** (`⇧⌘E`) — a tree file manager: **New File / New Folder**, **Rename**,
   **Duplicate**, **Delete** (confirmed), and **File Info** (line/word/char/byte counts) via the
   right-click menu; click a file to open it.
+- **File Browser** — the shared multi-pane
+  [`zpwr-file-browser`](https://github.com/MenkeTechnologies/zpwr-file-browser) (same component as
+  zemail / ztranslator / zstation), opened as a full-screen overlay: multiple panes and tabs,
+  sortable + resizable columns, fuzzy filter, color labels, folder-tree sidebar, text/hex/image
+  quicklook + preview pane, git status, dedup, diff, grep, compress/extract, hash, xattrs,
+  disk-usage and live fs-change watch. Double-click (or Enter) opens the file **in the zemacs
+  buffer** — the browser's "open" is wired to drive the editor, not the OS default app. Backed by
+  the crate's `fs_*` Tauri commands + the directory watcher (`zpwr_file_browser::commands`); the
+  front end is synced into `frontend/` by `copy-file-browser.mjs`, bridged through `fb-backend.js`.
+  Esc or the bar's **✕** closes it.
 - **Batch Rename** — rename every file whose **base name** matches a find → replace rule (literal or
   **regex** with `$1` capture refs); a live **preview** of every `from → to` (collisions flagged),
   then **Rename All** applies it on disk (confirmed). Files stay in their directory.
@@ -181,7 +195,7 @@ gitignored build artifacts.
 ## Build
 
 ```sh
-git submodule update --init --recursive   # zgui-core, zpwr-embed-terminal, zemacs
+git submodule update --init --recursive   # zgui-core, zpwr-embed-terminal, zpwr-file-browser, zpwr-i18n, zemacs
 pnpm install
 pnpm tauri dev      # or: pnpm tauri build
 ```

@@ -5,8 +5,8 @@
   "identifier": "com.menketechnologies.zemacs-gui",
   "build": {
     "frontendDist": "../../frontend",
-    "beforeDevCommand": "node scripts/copy-webui.mjs && node scripts/copy-embed-terminal.mjs && node scripts/copy-i18n.mjs && node scripts/prepare-stryke-sidecar.mjs && node scripts/prepare-zemacs-sidecar.mjs",
-    "beforeBuildCommand": "node scripts/copy-webui.mjs && node scripts/copy-embed-terminal.mjs && node scripts/copy-i18n.mjs && node scripts/prepare-stryke-sidecar.mjs && node scripts/prepare-zemacs-sidecar.mjs"
+    "beforeDevCommand": "node scripts/copy-webui.mjs && node scripts/copy-embed-terminal.mjs && node scripts/copy-i18n.mjs && node scripts/copy-file-browser.mjs && node scripts/prepare-stryke-sidecar.mjs && node scripts/prepare-zemacs-sidecar.mjs",
+    "beforeBuildCommand": "node scripts/copy-webui.mjs && node scripts/copy-embed-terminal.mjs && node scripts/copy-i18n.mjs && node scripts/copy-file-browser.mjs && node scripts/prepare-stryke-sidecar.mjs && node scripts/prepare-zemacs-sidecar.mjs"
   },
   "app": {
     "withGlobalTauri": true,

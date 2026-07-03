@@ -28,6 +28,9 @@ tauri-plugin-opener = "2"
 # Shared embedded PTY terminal (also used by Audio-Haxor, ztunnel, ztranslator, zpwr-daw).
 # The editor (zemacs) runs inside this terminal.
 zpwr-embed-terminal = { path = "../../crates/zpwr-embed-terminal" }
+# Shared multi-pane file browser (also used by zemail, ztranslator, zstation). The `tauri` feature
+# compiles the thin `#[tauri::command]` fs_* wrappers + the directory watcher that back the browser.
+zpwr-file-browser = { path = "../../crates/zpwr-file-browser/crate", features = ["tauri"] }
 
 # MacVim transparency + blurradius analog (translucent blurred window material).
 [target.'cfg(target_os = "macos")'.dependencies]

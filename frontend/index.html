@@ -13,10 +13,196 @@
   <link rel="stylesheet" href="zemacs.css">
   <!-- app-local project-workbench overlays (panels.js) -->
   <link rel="stylesheet" href="panels.css">
+  <!-- shared multi-pane file browser (zpwr-file-browser): copied by copy-file-browser.mjs -->
+  <link rel="stylesheet" href="file-browser.css">
+  <style>
+    /* Full-screen overlay chrome for the file browser (matches the sibling apps' .fb-overlay). */
+    .fb-overlay { position: fixed; inset: 0; z-index: 9000; background: var(--bg, #07070d);
+      display: flex; flex-direction: column; box-sizing: border-box; }
+    .fb-overlay[hidden] { display: none; }
+    .fb-overlay-bar { display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 10px; border-bottom: 1px solid rgba(5,217,232,.25); flex: 0 0 auto; }
+    .fb-overlay-title { font-size: 13px; color: var(--cyan, #05d9e8); letter-spacing: .04em; }
+    .fb-overlay-close { background: transparent; border: 1px solid rgba(5,217,232,.4);
+      color: #e0f0ff; border-radius: 4px; cursor: pointer; font: 14px/1 'Share Tech Mono', monospace;
+      padding: 4px 9px; }
+    .fb-overlay-close:hover { background: rgba(5,217,232,.15); }
+    .fb-overlay > #tabFiles { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+  </style>
 </head>
 <body>
   <!-- ZGui.appShell mounts here; the zemacs editor runs in a fullscreen terminal inside shell.body -->
   <div id="app"></div>
+
+  <!-- Shared multi-pane file browser overlay (zpwr-file-browser). Hidden until opened from the ⌘K
+       palette; panels.js toggleFileBrowser() shows it + inits file-browser.js on first open. The
+       #tabFiles markup is inlined from crates/zpwr-file-browser/webui/file-browser.html so it exists
+       at DOMContentLoaded (file-browser.js binds its sort/drag handlers then). -->
+  <div id="fbOverlay" class="fb-overlay" hidden>
+    <div class="fb-overlay-bar">
+      <span class="fb-overlay-title" data-i18n="ui.h2.file_browser">File Browser</span>
+      <button class="fb-overlay-close" id="fbOverlayClose" type="button" title="Close (Esc)" aria-label="Close">&#10005;</button>
+    </div>
+    <div class="tab-content" id="tabFiles">
+        <div class="audio-container">
+            <div class="audio-toolbar">
+                <button class="btn btn-secondary" data-action="fileNavBack" id="fbNavBack"
+                        title="Back (Cmd+[)" disabled data-i18n-title="ui.tt.back_cmd">&#8592;</button>
+                <button class="btn btn-secondary" data-action="fileNavFwd" id="fbNavFwd"
+                        title="Forward (Cmd+])" disabled data-i18n-title="ui.tt.forward_cmd">&#8594;</button>
+                <button class="btn btn-secondary" data-action="fileUp" data-i18n-title="ui.tt.go_to_parent_directory" id="btnFileUp"
+                        title="Go to parent directory">&#8593; <span
+                        data-i18n="ui.btn.8593_up">Up</span></button>
+                <button class="btn btn-secondary" data-action="fileHome" data-i18n-title="ui.tt.go_to_home_directory"
+                        title="Go to home directory">&#127968; <span
+                        data-i18n="ui.btn.127968_home">Home</span></button>
+                <button class="btn btn-secondary" data-action="fileQuickNav" data-dir="Desktop" data-i18n-title="ui.tt.go_to_desktop"
+                        title="Go to Desktop">&#128187; <span
+                        data-i18n="ui.btn.128187_desktop">Desktop</span></button>
+                <button class="btn btn-secondary" data-action="fileQuickNav" data-dir="Downloads"
+                        data-i18n-title="ui.tt.go_to_downloads" title="Go to Downloads">&#11015; <span
+                        data-i18n="ui.btn.11015_downloads">Downloads</span></button>
+                <button class="btn btn-secondary" data-action="fileQuickNav" data-dir="Music" data-i18n-title="ui.tt.go_to_music"
+                        title="Go to Music">&#127925; <span data-i18n="ui.btn.127925_music">Music</span>
+                </button>
+                <button class="btn btn-secondary" data-action="fileQuickNav" data-dir="Documents"
+                        data-i18n-title="ui.tt.go_to_documents" title="Go to Documents">&#128196; <span
+                        data-i18n="ui.btn.128196_documents">Documents</span></button>
+                <button class="btn btn-secondary" data-action="fileQuickNav" data-dir="/" data-i18n="ui.btn.root"
+                        data-i18n-title="ui.tt.go_to_root_filesystem" title="Go to root filesystem">/ Root
+                </button>
+                <button class="btn btn-secondary" data-action="fileAppDataDir"
+                        data-i18n-title="ui.tt.go_to_app_data_directory" title="Go to app data directory">&#128230; <span
+                        data-i18n="ui.btn.app_data">App data</span></button>
+                <button class="btn btn-secondary" data-action="fileFav" data-i18n-title="ui.tt.bookmark_current_directory"
+                        id="btnFileFav" title="Bookmark current directory">&#9733;
+                    <span data-i18n="ui.btn.9733_bookmark">Bookmark</span></button>
+                <button class="btn btn-secondary" data-action="fileNewFolder"
+                        id="btnFileNewFolder" title="Create new folder in current directory (Cmd+Shift+N)" data-i18n-title="ui.tt.create_new_folder_in_current_directory_cmd_shift_n">&#128193;+
+                    New Folder</button>
+                <button class="btn btn-secondary" data-action="fileTogglePreview"
+                        id="btnFilePreview" title="Toggle preview pane (Cmd+I)" data-i18n-title="ui.tt.toggle_preview_pane_cmd_i">&#128196;
+                    Preview</button>
+                <div class="file-breadcrumb" id="fileBreadcrumb"></div>
+                <input type="text" class="file-path-input fb-hidden" id="fileBrowserPathInput"
+                       autocomplete="off" autocorrect="off"
+                       spellcheck="false" placeholder="Type a path… (Cmd+L)"
+                       title="Type a filesystem path and press Enter to navigate" data-i18n-placeholder="ui.ph.type_a_path_cmd_l" data-i18n-title="ui.tt.type_a_filesystem_path_and_press_enter_to_navigate">
+                <div class="search-box" style="flex: 1; max-width: 300px;">
+                    <span class="search-icon">&#128269;</span>
+                    <input autocapitalize="off" autocomplete="off" autocorrect="off"
+                           data-action="filterFiles" data-i18n-placeholder="ui.ph.filter_files" data-i18n-placeholder-regex="ui.ph.regex_filter_files" data-i18n-title="ui.tt.filter_files_in_current_directory"
+                           id="fileSearchInput" placeholder="Fuzzy filter files..." spellcheck="false"
+                           title="Filter files in current directory"
+                           type="text">
+                    <button class="btn-regex" data-action="toggleRegex" data-i18n-title="ui.tt.toggle_regex_search" data-target="filterFiles"
+                            id="regexFiles" title="Toggle regex search">.*
+                    </button>
+                </div>
+            </div>
+            <div class="file-favs fb-hidden" id="fileFavs">
+                <div class="file-favs-header"><span>&#9733; <span data-i18n="ui.files.favorite_dirs_header">Favorite Directories</span></span>
+                    <span></span></div>
+                <div class="file-favs-grid" id="fileFavsGrid"></div>
+            </div>
+            <div class="fb-ext-chips" id="fileExtChips">
+                <button class="ext-chip active" data-ext-filter="all" title="Show all files" data-i18n-title="ui.tt.show_all_files" data-i18n="ui.btn.all">All</button>
+                <button class="ext-chip" data-ext-filter="audio" title="Audio files only" data-i18n-title="ui.tt.audio_files_only" data-i18n="ui.btn.audio">Audio</button>
+                <button class="ext-chip" data-ext-filter="daw" title="DAW project files only" data-i18n-title="ui.tt.daw_project_files_only" data-i18n="ui.btn.daw">DAW</button>
+                <button class="ext-chip" data-ext-filter="preset" title="Plug-in preset files only" data-i18n-title="ui.tt.plug_in_preset_files_only" data-i18n="ui.btn.preset">Preset</button>
+                <button class="ext-chip" data-ext-filter="midi" title="MIDI files only" data-i18n-title="ui.tt.midi_files_only" data-i18n="ui.btn.127924_midi">MIDI</button>
+                <button class="ext-chip" data-ext-filter="pdf" title="PDFs only" data-i18n-title="ui.tt.pdfs_only" data-i18n="ui.btn.128196_pdf">PDF</button>
+                <button class="ext-chip" data-ext-filter="video" title="Video files only" data-i18n-title="ui.tt.video_files_only" data-i18n="ui.btn.video">Video</button>
+                <button class="ext-chip" data-ext-filter="image" title="Images only" data-i18n-title="ui.tt.images_only" data-i18n="ui.btn.image">Image</button>
+                <button class="ext-chip" data-ext-filter="other" title="Files not in any other category" data-i18n-title="ui.tt.files_not_in_any_other_category" data-i18n="ui.btn.other">Other</button>
+            </div>
+            <div class="fb-label-chips" id="fileLabelChips" aria-label="Filter rows by color label">
+                <button class="label-chip active" data-label-chip="all" title="Show all (any label)" data-i18n-title="ui.tt.show_all_any_label" data-i18n="ui.btn.all">All</button>
+                <button class="label-chip label-chip-none" data-label-chip="0" title="Only unlabeled rows" data-i18n-title="ui.tt.only_unlabeled_rows">&#9675;</button>
+                <button class="label-chip fb-label-1" data-label-chip="1" title="Red" data-i18n-title="ui.tt.red"></button>
+                <button class="label-chip fb-label-2" data-label-chip="2" title="Orange" data-i18n-title="ui.tt.orange"></button>
+                <button class="label-chip fb-label-3" data-label-chip="3" title="Yellow" data-i18n-title="ui.tt.yellow"></button>
+                <button class="label-chip fb-label-4" data-label-chip="4" title="Green" data-i18n-title="ui.tt.green"></button>
+                <button class="label-chip fb-label-5" data-label-chip="5" title="Cyan" data-i18n-title="ui.tt.cyan"></button>
+                <button class="label-chip fb-label-6" data-label-chip="6" title="Purple" data-i18n-title="ui.tt.purple"></button>
+                <button class="label-chip fb-label-7" data-label-chip="7" title="Gray" data-i18n-title="ui.tt.gray"></button>
+            </div>
+            <div class="file-bulk-bar fb-hidden" id="fileBulkBar">
+                <span class="file-bulk-count"><span id="fileBulkCount">0</span> selected</span>
+                <div class="batch-sep"></div>
+                <button class="btn btn-stop" data-action="fileBulkClear" title="Clear selection" data-i18n-title="ui.tt.clear_selection">&#10005; <span data-i18n="ui.btn.10005_clear">Clear</span></button>
+                <button class="btn btn-secondary" data-action="fileBulkFavorite" title="Add selected to favorites" data-i18n-title="ui.tt.add_selected_to_favorites">&#9733; <span data-i18n="ui.btn.9733_favorite">Favorite</span></button>
+                <button class="btn btn-secondary" data-action="fileBulkOpen" title="Open selected in the editor" data-i18n-title="ui.tt.open_selected_with_default_app">&#128194; <span data-i18n="menu.open">Open</span></button>
+                <button class="btn btn-secondary" data-action="fileBulkRename" title="Rename selected with pattern (find/replace, prefix/suffix, numbering)" data-i18n-title="ui.tt.rename_selected_with_pattern_find_replace_prefix_s">&#9998; Rename...</button>
+                <button class="btn btn-stop" data-action="fileBulkDelete" title="Delete selected" data-i18n-title="ui.tt.delete_selected"><span data-i18n="menu.delete">Delete</span></button>
+            </div>
+            <div class="file-list-header" id="fileListHeader">
+                <span class="file-cb-h"><input type="checkbox" class="file-row-cb-all" id="fileRowCbAll" title="Select all visible" data-i18n-title="ui.tt.select_all_visible"></span>
+                <span class="file-icon-h"></span>
+                <span class="file-name-h" data-sort="name" data-fb-col="name"><span data-i18n="ui.audio.th_name">Name</span><span class="sort-arrow">&#9650;</span><span class="fb-col-resize" data-fb-resize="name"></span></span>
+                <span class="file-ext-h" data-sort="type" data-fb-col="ext"><span data-i18n="ui.export.col_type">Type</span><span class="sort-arrow">&#9650;</span><span class="fb-col-resize" data-fb-resize="ext"></span></span>
+                <span class="file-size-h" data-sort="size" data-fb-col="size"><span data-i18n="ui.audio.th_size">Size</span><span class="sort-arrow">&#9650;</span><span class="fb-col-resize" data-fb-resize="size"></span></span>
+                <span class="file-items-h" data-sort="items" data-fb-col="items" title="Recursive file count (folders only)" data-i18n-title="ui.tt.recursive_file_count_folders_only">Items<span class="sort-arrow">&#9650;</span><span class="fb-col-resize" data-fb-resize="items"></span></span>
+                <span class="file-date-h" data-sort="date" data-fb-col="date"><span data-i18n="ui.audio.th_modified">Modified</span><span class="sort-arrow">&#9650;</span><span class="fb-col-resize" data-fb-resize="date"></span></span>
+                <span class="file-created-h" data-sort="created" data-fb-col="created" title="File creation date" data-i18n-title="ui.tt.file_creation_date">Created<span class="sort-arrow">&#9650;</span><span class="fb-col-resize" data-fb-resize="created"></span></span>
+            </div>
+            <div class="file-list-wrap">
+                <aside class="fb-tree-sidebar fb-hidden" id="fbTreeSidebar" aria-label="Folder tree">
+                    <div class="fb-tree-header">
+                        <span>Folders</span>
+                        <button class="fb-tree-close" data-action="fbTreeClose" title="Hide tree (Cmd+B)" data-i18n-title="ui.tt.hide_tree_cmd_b">&times;</button>
+                    </div>
+                    <div class="fb-tree-body" id="fbTreeBody"></div>
+                </aside>
+                <div class="fb-pane fb-pane-active" data-pane-idx="0">
+                    <div class="fb-tab-bar" data-fb-tab-bar role="tablist" aria-label="File browser tabs">
+                        <div class="fb-tab-list" data-fb-tab-list></div>
+                        <button class="fb-tab-add" data-fb-tab-add title="New tab" aria-label="New tab" data-i18n-title="ui.tt.new_tab">+</button>
+                    </div>
+                    <div class="file-list" id="fileList">
+                        <div class="state-message">
+                            <div class="state-icon">&#128193;</div>
+                            <h2 data-i18n="ui.h2.file_browser">File Browser</h2>
+                            <p data-i18n="ui.p.browse_your_filesystem_configure_root_directories_">Browse your filesystem.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="fb-pane-resize fb-hidden" data-fb-pane-resize="0" title="Drag to resize · double-click to reset · click ⇆ to swap" data-i18n-title="ui.tt.drag_to_resize_double_click_to_reset_click_to_swap"><button class="fb-pane-swap" data-fb-pane-swap="0" title="Swap these two panes" tabindex="-1" data-i18n-title="ui.tt.swap_these_two_panes">&#8646;</button></div>
+                <div class="fb-pane fb-hidden" data-pane-idx="1">
+                    <div class="fb-tab-bar" data-fb-tab-bar role="tablist" aria-label="File browser tabs">
+                        <div class="fb-tab-list" data-fb-tab-list></div>
+                        <button class="fb-tab-add" data-fb-tab-add title="New tab" aria-label="New tab" data-i18n-title="ui.tt.new_tab">+</button>
+                    </div>
+                    <div class="file-list"></div>
+                </div>
+                <div class="fb-pane-resize fb-hidden" data-fb-pane-resize="1" title="Drag to resize · double-click to reset · click ⇆ to swap" data-i18n-title="ui.tt.drag_to_resize_double_click_to_reset_click_to_swap"><button class="fb-pane-swap" data-fb-pane-swap="1" title="Swap these two panes" tabindex="-1" data-i18n-title="ui.tt.swap_these_two_panes">&#8646;</button></div>
+                <div class="fb-pane fb-hidden" data-pane-idx="2">
+                    <div class="fb-tab-bar" data-fb-tab-bar role="tablist" aria-label="File browser tabs">
+                        <div class="fb-tab-list" data-fb-tab-list></div>
+                        <button class="fb-tab-add" data-fb-tab-add title="New tab" aria-label="New tab" data-i18n-title="ui.tt.new_tab">+</button>
+                    </div>
+                    <div class="file-list"></div>
+                </div>
+                <div class="fb-pane-resize fb-hidden" data-fb-pane-resize="2" title="Drag to resize · double-click to reset · click ⇆ to swap" data-i18n-title="ui.tt.drag_to_resize_double_click_to_reset_click_to_swap"><button class="fb-pane-swap" data-fb-pane-swap="2" title="Swap these two panes" tabindex="-1" data-i18n-title="ui.tt.swap_these_two_panes">&#8646;</button></div>
+                <div class="fb-pane fb-hidden" data-pane-idx="3">
+                    <div class="fb-tab-bar" data-fb-tab-bar role="tablist" aria-label="File browser tabs">
+                        <div class="fb-tab-list" data-fb-tab-list></div>
+                        <button class="fb-tab-add" data-fb-tab-add title="New tab" aria-label="New tab" data-i18n-title="ui.tt.new_tab">+</button>
+                    </div>
+                    <div class="file-list"></div>
+                </div>
+                <aside class="fb-preview-pane fb-hidden" id="fbPreviewPane">
+                    <div class="fb-preview-header">
+                        <span class="fb-preview-title" id="fbPreviewTitle">Preview</span>
+                        <button class="fb-preview-close" data-action="fbPreviewClose" title="Hide preview pane" data-i18n-title="ui.tt.hide_preview_pane">&times;</button>
+                    </div>
+                    <div class="fb-preview-body" id="fbPreviewBody"></div>
+                </aside>
+            </div>
+            <div class="file-list-footer" id="fileListFooter"></div>
+        </div>
+    </div>
+  </div>
 
   <!-- zgui-core baseline: util/fzf/icons first, then the appShell dependency set -->
   <script src="lib/zgui-core/webui/util.js"></script>
@@ -57,6 +243,11 @@
 
   <!-- the MacVim GUI bridge (menu/shortcuts/dialogs → PTY); must load before main.js mounts -->
   <script src="menu.js"></script>
+
+  <!-- shared multi-pane file browser (zpwr-file-browser): fb-backend.js installs the Tauri fs bridge
+       + host shims BEFORE file-browser.js, which inits lazily on first overlay open (panels.js) -->
+  <script src="fb-backend.js"></script>
+  <script src="file-browser.js"></script>
 
   <!-- app-local project workbench (quick-open, find-in-files, recent, project files, git); before main.js -->
   <script src="panels.js"></script>
