@@ -158,8 +158,10 @@ The GUI wraps the modal core the way MacVim wraps Vim. Every surface is a **zgui
 action is bridged to the editor by writing an ex-command into the PTY (the GUI never edits files
 itself, it drives `zemacs`). Because zemacs is a Helix fork, MacVim "tabs" map to **buffers**.
 
-- **Menu bar** (`ZGui.menubar`) — File / Edit / View / Buffers / Window / Help.
-- **Toolbar** (`ZGui.buttonBar`) — new / open / save / buffer nav / find / split / full screen.
+- **Menu bar** (`ZGui.menubar`) — File / Edit / View / Buffers / Window / Code / Help.
+- **Code menu** — language-server actions bridged into the PTY: go to definition / references /
+  type definition, hover docs, next/previous diagnostic, format document, restart language server.
+- **Toolbar** (`ZGui.buttonBar`) — new / open / save / buffer nav / find / go-to-def / format / split / full screen.
 - **Command palette** (`⌘K`) — every menu action, fuzzy-searchable.
 - **Cmd-shortcuts** — ⌘S save, ⇧⌘S Save As, ⌘O open, ⌘W close buffer, ⌘N new, ⌘Z/⇧⌘Z undo/redo,
   ⌘F find, ⌘G/⇧⌘G next/prev, ⌘{ ⌘} buffer cycle, ⌃⌘F full screen.
