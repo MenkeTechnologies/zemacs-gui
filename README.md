@@ -170,6 +170,12 @@ the **Tabs** menu manages tabpages (each holds its own split layout).
 - **Git menu** — zemacs-vcs actions bridged into the PTY: Magit status, stage / unstage file, line
   blame, buffer-vs-HEAD diff, next/previous/reset hunk, stash / pop, and merge-conflict resolution
   (3-pane resolve, keep ours / theirs, next conflict).
+- **Window menu** — vim's `C-w` split-window family bridged into the PTY (each key backed by a real
+  editor command): split horizontally / vertically, focus the split to the left / down / up / right
+  (`C-w h/j/k/l`), move the current split to an edge (`C-w H/J/K/L`), rotate splits forward / reverse
+  and exchange with the next (`C-w w/R/x`), grow / shrink height and width and equalize
+  (`C-w +/-/>/<` / `C-w =`), maximize by closing the others (`C-w o`), close the split (`C-w q`), and
+  undo the last layout change (`C-w u`, winner-undo).
 - **Tabs menu** — vim's tabpage family bridged into the PTY (real tabpages, distinct from buffers —
   each carries its own split layout): new tab / new tab with file (`:tabnew`, the latter reusing the
   Open file-browser), close / close-others (`:tabclose` / `:tabonly`), next / previous / first / last
