@@ -241,6 +241,10 @@
   <script src="xterm.js"></script>
   <script src="terminal.js"></script>
 
+  <!-- OS-native application menu API (ZGui.menu.install/buildSpec); menu.js overrides buildSpec so the
+       appShell's single install() realizes the full zemacs menu bar. Must load before menu.js. -->
+  <script src="lib/zgui-core/webui/menu.js"></script>
+
   <!-- the MacVim GUI bridge (menu/shortcuts/dialogs → PTY); must load before main.js mounts -->
   <script src="menu.js"></script>
 
