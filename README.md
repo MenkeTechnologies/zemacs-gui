@@ -160,11 +160,17 @@ itself, it drives `zemacs`). zemacs (a Helix fork) has **both** buffers and a re
 family, so the GUI drives each with its own menu — the **Buffers** menu cycles/closes open buffers,
 the **Tabs** menu manages tabpages (each holds its own split layout).
 
-- **Menu bar** (`ZGui.menubar`) — File / Edit / Search / View / Buffers / Window / Tabs / Folds / Marks / Macros / Code / Git / Help.
+- **Menu bar** (`ZGui.menubar`) — File / Edit / Search / Text / View / Buffers / Window / Tabs / Folds / Marks / Macros / Code / Git / Help.
 - **Search menu** — in-buffer engine commands (distinct from the file-based Find-in-Files workbench):
   whole-buffer regex Replace (`:%s`, delimiter auto-chosen so a `/` in the pattern is safe),
   case-preserving Replace (vim-abolish `:%S` — `foo/Foo/FOO` → `bar/Bar/BAR`), Count Matches
   (`:count-matches`), and Clear Search Highlight (`:nohlsearch`).
+- **Text menu** — in-buffer, live-selection line transforms bridged into the PTY (distinct from the
+  file-based align-columns / whitespace panels in the project workbench, which act on a picked file):
+  comment / uncomment the selected lines (`SPC c c` → `toggle_comments`); sort lines, with
+  reverse / numeric / unique variants (`:sort-lines [--reverse|--numeric|--unique]`); sort the ranges
+  in the selection (`:sort`); sort paragraphs (`:sort-paragraphs`); hard-wrap the selection to the
+  configured width (`:reflow`); and reindent / dedent by a shiftwidth (`:indent-lines` / `:dedent-lines`).
 - **Code menu** — language-server actions bridged into the PTY: go to definition / references /
   type definition, hover docs, next/previous diagnostic, format document, restart language server.
 - **Git menu** — zemacs-vcs actions bridged into the PTY: Magit status, stage / unstage file, line
@@ -194,7 +200,7 @@ the **Tabs** menu manages tabpages (each holds its own split layout).
   re-run the last ex-command (`@{reg}` / `Q` / `@:`); the macro ring — cycle next / previous, view /
   swap / delete the head macro (`SPC K r n/p/L/s/d`); the macro counter — increment / insert-and-increment
   (`SPC K c a/c`); and save the last macro to a register (`SPC K e r`).
-- **Toolbar** (`ZGui.buttonBar`) — new / open / save / buffer nav / find / replace / go-to-def / format / git status / list marks / replay macro / toggle fold / list tabs / split / full screen.
+- **Toolbar** (`ZGui.buttonBar`) — new / open / save / buffer nav / find / replace / go-to-def / format / git status / list marks / replay macro / toggle fold / comment lines / list tabs / split / full screen.
 - **Command palette** (`⌘K`) — every menu action, fuzzy-searchable.
 - **Cmd-shortcuts** — ⌘S save, ⇧⌘S Save As, ⌘O open, ⌘W close buffer, ⌘N new, ⌘Z/⇧⌘Z undo/redo,
   ⌘F find, ⌘G/⇧⌘G next/prev, ⌘{ ⌘} buffer cycle, ⌃⌘F full screen.
