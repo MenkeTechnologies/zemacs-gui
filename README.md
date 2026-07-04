@@ -160,7 +160,7 @@ itself, it drives `zemacs`). zemacs (a Helix fork) has **both** buffers and a re
 family, so the GUI drives each with its own menu — the **Buffers** menu cycles/closes open buffers,
 the **Tabs** menu manages tabpages (each holds its own split layout).
 
-- **Menu bar** (`ZGui.menubar`) — File / Edit / Search / Text / Extract / View / Buffers / Window / Tabs / Folds / Marks / Bookmarks / Macros / Snippets / Code / Spell / Abbrev / Git / Help.
+- **Menu bar** (`ZGui.menubar`) — File / Edit / Search / Text / Extract / Align / View / Buffers / Window / Tabs / Folds / Marks / Bookmarks / Macros / Snippets / Code / Spell / Abbrev / Git / Help.
 - **Search menu** — in-buffer engine commands (distinct from the file-based Find-in-Files workbench):
   whole-buffer regex Replace (`:%s`, delimiter auto-chosen so a `/` in the pattern is safe),
   case-preserving Replace (vim-abolish `:%S` — `foo/Foo/FOO` → `bar/Bar/BAR`), Count Matches
@@ -176,6 +176,13 @@ the **Tabs** menu manages tabpages (each holds its own split layout).
   one per line (`:extract-urls` / `:extract-emails` / `:extract-ips` / `:extract-numbers` /
   `:extract-quoted`); and extract every substring between a start / end delimiter pair from a prompt
   (`:extract-between <start> <end>`, each delimiter shellword-quoted).
+- **Align menu** — the vim `SPC x a` column-alignment family bridged into the PTY, acting on the
+  primary selection's rows (distinct from the workbench's file-based Align-Columns panel, which aligns a
+  picked file on disk — the same in-buffer-vs-file split as the Text menu): align the selection's cursor
+  columns (`align_selections`); align each row at a fixed target character — `=` / `:` / `,` / `;` / `&` /
+  `.` (numeric), the paired brackets `(` `)` `[` `]` `{` `}`, or the arithmetic operators
+  (`align_at_equals` … `align_at_arithmetic`); and align at a prompted single character
+  (left / right, `align_left_at_char` / `align_right_at_char`) or a prompted regexp (`align_at_regex`).
 - **Code menu** — language-server actions bridged into the PTY: go to definition / references /
   type definition, hover docs, peek definition, signature help, document / workspace symbol pickers
   (`SPC s j` / `SPC s S`), the refactor set — rename symbol, code action, organize imports, implement /
