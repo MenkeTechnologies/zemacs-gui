@@ -160,7 +160,7 @@ itself, it drives `zemacs`). zemacs (a Helix fork) has **both** buffers and a re
 family, so the GUI drives each with its own menu — the **Buffers** menu cycles/closes open buffers,
 the **Tabs** menu manages tabpages (each holds its own split layout).
 
-- **Menu bar** (`ZGui.menubar`) — File / Edit / Search / Text / View / Buffers / Window / Tabs / Folds / Marks / Macros / Code / Git / Help.
+- **Menu bar** (`ZGui.menubar`) — File / Edit / Search / Text / View / Buffers / Window / Tabs / Folds / Marks / Macros / Code / Spell / Git / Help.
 - **Search menu** — in-buffer engine commands (distinct from the file-based Find-in-Files workbench):
   whole-buffer regex Replace (`:%s`, delimiter auto-chosen so a `/` in the pattern is safe),
   case-preserving Replace (vim-abolish `:%S` — `foo/Foo/FOO` → `bar/Bar/BAR`), Count Matches
@@ -172,7 +172,15 @@ the **Tabs** menu manages tabpages (each holds its own split layout).
   in the selection (`:sort`); sort paragraphs (`:sort-paragraphs`); hard-wrap the selection to the
   configured width (`:reflow`); and reindent / dedent by a shiftwidth (`:indent-lines` / `:dedent-lines`).
 - **Code menu** — language-server actions bridged into the PTY: go to definition / references /
-  type definition, hover docs, next/previous diagnostic, format document, restart language server.
+  type definition, hover docs, peek definition, signature help, document / workspace symbol pickers
+  (`SPC s j` / `SPC s S`), the refactor set — rename symbol, code action, organize imports, implement /
+  override members, generate code (`SPC l r/a/O/i/v/g`) — next/previous diagnostic, format document,
+  restart language server.
+- **Spell menu** — vim's spell-check family bridged into the PTY: suggest corrections for the word under
+  the cursor (`z=`), jump to the previous / next misspelling (`[s` / `]s`), add a word to the dictionary
+  or mark it misspelled and undo that (`zg` / `zw` / `zug`), edit the wordlists by typing words
+  (`:spellwrong` / `:spellrare` / `:spellundo`), and list the known-good words / show wordlist info
+  (`:spelldump` / `:spellinfo`).
 - **Git menu** — zemacs-vcs actions bridged into the PTY: Magit status, stage / unstage file, line
   blame, buffer-vs-HEAD diff, next/previous/reset hunk, stash / pop, and merge-conflict resolution
   (3-pane resolve, keep ours / theirs, next conflict).
