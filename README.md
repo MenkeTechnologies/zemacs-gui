@@ -160,7 +160,7 @@ itself, it drives `zemacs`). zemacs (a Helix fork) has **both** buffers and a re
 family, so the GUI drives each with its own menu — the **Buffers** menu cycles/closes open buffers,
 the **Tabs** menu manages tabpages (each holds its own split layout).
 
-- **Menu bar** (`ZGui.menubar`) — File / Edit / Search / Text / Extract / Align / View / Buffers / Window / Tabs / Folds / Marks / Bookmarks / Macros / Snippets / Code / Spell / Abbrev / Git / Help.
+- **Menu bar** (`ZGui.menubar`) — File / Edit / Search / Text / Extract / Align / Structure / View / Buffers / Window / Tabs / Folds / Marks / Bookmarks / Macros / Snippets / Code / Spell / Abbrev / Git / Help.
 - **Search menu** — in-buffer engine commands (distinct from the file-based Find-in-Files workbench):
   whole-buffer regex Replace (`:%s`, delimiter auto-chosen so a `/` in the pattern is safe),
   case-preserving Replace (vim-abolish `:%S` — `foo/Foo/FOO` → `bar/Bar/BAR`), Count Matches
@@ -183,6 +183,16 @@ the **Tabs** menu manages tabpages (each holds its own split layout).
   `.` (numeric), the paired brackets `(` `)` `[` `]` `{` `}`, or the arithmetic operators
   (`align_at_equals` … `align_at_arithmetic`); and align at a prompted single character
   (left / right, `align_left_at_char` / `align_right_at_char`) or a prompted regexp (`align_at_regex`).
+- **Structure menu** — the vim `SPC k` paredit/sexp structural-editing family bridged into the PTY
+  (plus the split verb on `SPC j s`): sexp navigation — beginning / end of sexp, up to parent, next /
+  previous sexp, forward / backward to the enclosing paren, matching paren, copy sexp; slurp / barf
+  forward and backward (`paredit_slurp_forward` … `paredit_barf_backward`); wrap with parens, unwrap
+  (splice), raise, transpose, split, join, convolute, absorb (`wrap_sexp` / `paredit_splice` /
+  `paredit_raise` / `paredit_transpose` / `paredit_split` / `join_selections` / `paredit_convolute` /
+  `paredit_absorb`); splice-killing forward / backward and insert-sexp before / after
+  (`paredit_splice_kill_forward` / `…_backward`, `paredit_insert_sexp_before` / `…_after`); and delete
+  sexp / symbol forward and backward. The submap's generic vim reuses (visual select, undo/redo, mode
+  switches, paste) are omitted — they already live on the Edit menu and are not structural ops.
 - **Code menu** — language-server actions bridged into the PTY: go to definition / references /
   type definition, hover docs, peek definition, signature help, document / workspace symbol pickers
   (`SPC s j` / `SPC s S`), the refactor set — rename symbol, code action, organize imports, implement /
