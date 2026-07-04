@@ -160,7 +160,7 @@ itself, it drives `zemacs`). zemacs (a Helix fork) has **both** buffers and a re
 family, so the GUI drives each with its own menu — the **Buffers** menu cycles/closes open buffers,
 the **Tabs** menu manages tabpages (each holds its own split layout).
 
-- **Menu bar** (`ZGui.menubar`) — File / Edit / Search / View / Buffers / Window / Tabs / Folds / Marks / Code / Git / Help.
+- **Menu bar** (`ZGui.menubar`) — File / Edit / Search / View / Buffers / Window / Tabs / Folds / Marks / Macros / Code / Git / Help.
 - **Search menu** — in-buffer engine commands (distinct from the file-based Find-in-Files workbench):
   whole-buffer regex Replace (`:%s`, delimiter auto-chosen so a `/` in the pattern is safe),
   case-preserving Replace (vim-abolish `:%S` — `foo/Foo/FOO` → `bar/Bar/BAR`), Count Matches
@@ -189,7 +189,12 @@ the **Tabs** menu manages tabpages (each holds its own split layout).
   delete marks (`:mark`, `` `{x} `` goto, `:marks`, `:delmarks[!]`); jumplist back / forward
   (C-o / C-i), list / clear jumps (`:jumps`, `:clearjumps`), recent-files picker (`:oldfiles`); and
   registers show / set / clear / clear-all (`:registers`, `:set-register`, `:clear-register`).
-- **Toolbar** (`ZGui.buttonBar`) — new / open / save / buffer nav / find / replace / go-to-def / format / git status / list marks / toggle fold / list tabs / split / full screen.
+- **Macros menu** — vim's keyboard-macro family plus the Spacemacs `SPC K` kmacro tree bridged into
+  the PTY: record into a register / stop (`q{reg}` / `q`), replay a register / the last one /
+  re-run the last ex-command (`@{reg}` / `Q` / `@:`); the macro ring — cycle next / previous, view /
+  swap / delete the head macro (`SPC K r n/p/L/s/d`); the macro counter — increment / insert-and-increment
+  (`SPC K c a/c`); and save the last macro to a register (`SPC K e r`).
+- **Toolbar** (`ZGui.buttonBar`) — new / open / save / buffer nav / find / replace / go-to-def / format / git status / list marks / replay macro / toggle fold / list tabs / split / full screen.
 - **Command palette** (`⌘K`) — every menu action, fuzzy-searchable.
 - **Cmd-shortcuts** — ⌘S save, ⇧⌘S Save As, ⌘O open, ⌘W close buffer, ⌘N new, ⌘Z/⇧⌘Z undo/redo,
   ⌘F find, ⌘G/⇧⌘G next/prev, ⌘{ ⌘} buffer cycle, ⌃⌘F full screen.
