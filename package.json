@@ -17,9 +17,12 @@
     "esbuild": "^0.28.1",
     "monaco-editor": "0.55.1",
     "monaco-emacs": "0.3.0",
-    "monaco-vim": "0.4.4"
+    "monaco-vim": "0.4.4",
+    "zgui-core": "github:MenkeTechnologies/zgui-core#v1.0.0"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }

@@ -23,6 +23,9 @@ importers:
       monaco-vim:
         specifier: 0.4.4
         version: 0.4.4(monaco-editor@0.55.1)
+      zgui-core:
+        specifier: github:MenkeTechnologies/zgui-core#v1.0.0
+        version: git+ssh://git@github.com/MenkeTechnologies/zgui-core.git#96577c5613394a6bbe3f37a39113f4336b9262c5
 
 packages:
 
@@ -293,6 +296,10 @@ packages:
     peerDependencies:
       monaco-editor: '*'
 
+  zgui-core@git+ssh://git@github.com/MenkeTechnologies/zgui-core.git#96577c5613394a6bbe3f37a39113f4336b9262c5:
+    resolution: {commit: 96577c5613394a6bbe3f37a39113f4336b9262c5, repo: git@github.com:MenkeTechnologies/zgui-core.git, type: git}
+    version: 1.0.0
+
 snapshots:
 
   '@esbuild/aix-ppc64@0.28.1':
@@ -476,3 +483,5 @@ snapshots:
   monaco-vim@0.4.4(monaco-editor@0.55.1):
     dependencies:
       monaco-editor: 0.55.1
+
+  zgui-core@git+ssh://git@github.com/MenkeTechnologies/zgui-core.git#96577c5613394a6bbe3f37a39113f4336b9262c5: {}

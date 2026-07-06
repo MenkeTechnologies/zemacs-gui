@@ -5,8 +5,8 @@
   "identifier": "com.menketechnologies.zemacs-gui",
   "build": {
     "frontendDist": "../../frontend",
-    "beforeDevCommand": "node scripts/copy-webui.mjs && node scripts/copy-embed-terminal.mjs && node scripts/copy-i18n.mjs && node scripts/copy-file-browser.mjs && node scripts/copy-hooks-editor.mjs && node scripts/prepare-stryke-sidecar.mjs && node scripts/prepare-zemacs-sidecar.mjs",
-    "beforeBuildCommand": "node scripts/copy-webui.mjs && node scripts/copy-embed-terminal.mjs && node scripts/copy-i18n.mjs && node scripts/copy-file-browser.mjs && node scripts/copy-hooks-editor.mjs && node scripts/prepare-stryke-sidecar.mjs && node scripts/prepare-zemacs-sidecar.mjs"
+    "beforeDevCommand": "node scripts/copy-zgui-core.mjs && node scripts/copy-webui.mjs && node scripts/copy-embed-terminal.mjs && node scripts/copy-i18n.mjs && node scripts/copy-file-browser.mjs && node scripts/copy-hooks-editor.mjs && node scripts/prepare-stryke-sidecar.mjs && node scripts/prepare-zemacs-sidecar.mjs",
+    "beforeBuildCommand": "node scripts/copy-zgui-core.mjs && node scripts/copy-webui.mjs && node scripts/copy-embed-terminal.mjs && node scripts/copy-i18n.mjs && node scripts/copy-file-browser.mjs && node scripts/copy-hooks-editor.mjs && node scripts/prepare-stryke-sidecar.mjs && node scripts/prepare-zemacs-sidecar.mjs"
   },
   "app": {
     "withGlobalTauri": true,
@@ -27,7 +27,10 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["mvim", "zemacs"]
+        "schemes": [
+          "mvim",
+          "zemacs"
+        ]
       }
     }
   },
@@ -50,16 +53,80 @@
         "name": "Text File",
         "role": "Editor",
         "ext": [
-          "txt", "md", "markdown", "rst", "org", "log", "csv", "tsv",
-          "rs", "go", "c", "h", "cc", "cpp", "hpp", "java", "kt", "swift",
-          "js", "mjs", "cjs", "ts", "tsx", "jsx", "vue", "svelte",
-          "py", "rb", "pl", "pm", "php", "lua", "tcl", "r", "jl",
-          "sh", "bash", "zsh", "fish", "ps1", "bat",
-          "html", "htm", "css", "scss", "sass", "less",
-          "json", "json5", "yaml", "yml", "toml", "ini", "conf", "cfg", "env",
-          "xml", "svg", "sql", "graphql", "proto",
-          "vim", "el", "lisp", "clj", "scala", "hs", "ml", "ex", "exs",
-          "dockerfile", "makefile", "cmake", "gradle"
+          "txt",
+          "md",
+          "markdown",
+          "rst",
+          "org",
+          "log",
+          "csv",
+          "tsv",
+          "rs",
+          "go",
+          "c",
+          "h",
+          "cc",
+          "cpp",
+          "hpp",
+          "java",
+          "kt",
+          "swift",
+          "js",
+          "mjs",
+          "cjs",
+          "ts",
+          "tsx",
+          "jsx",
+          "vue",
+          "svelte",
+          "py",
+          "rb",
+          "pl",
+          "pm",
+          "php",
+          "lua",
+          "tcl",
+          "r",
+          "jl",
+          "sh",
+          "bash",
+          "zsh",
+          "fish",
+          "ps1",
+          "bat",
+          "html",
+          "htm",
+          "css",
+          "scss",
+          "sass",
+          "less",
+          "json",
+          "json5",
+          "yaml",
+          "yml",
+          "toml",
+          "ini",
+          "conf",
+          "cfg",
+          "env",
+          "xml",
+          "svg",
+          "sql",
+          "graphql",
+          "proto",
+          "vim",
+          "el",
+          "lisp",
+          "clj",
+          "scala",
+          "hs",
+          "ml",
+          "ex",
+          "exs",
+          "dockerfile",
+          "makefile",
+          "cmake",
+          "gradle"
         ]
       }
     ]

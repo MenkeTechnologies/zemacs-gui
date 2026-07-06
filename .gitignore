@@ -23,3 +23,4 @@ app/src-tauri/binaries/
 # Rust build artifacts
 app/src-tauri/target/
 app/src-tauri/gen/
+frontend/lib/zgui-core/

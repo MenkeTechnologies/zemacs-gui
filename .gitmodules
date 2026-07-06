@@ -1,6 +1,3 @@
-[submodule "frontend/lib/zgui-core"]
-	path = frontend/lib/zgui-core
-	url = https://github.com/MenkeTechnologies/zgui-core
 [submodule "crates/zpwr-embed-terminal"]
 	path = crates/zpwr-embed-terminal
 	url = https://github.com/MenkeTechnologies/zpwr-embed-terminal
