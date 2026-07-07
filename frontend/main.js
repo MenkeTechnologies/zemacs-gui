@@ -91,16 +91,26 @@
         setTimeout(function () { try { term.focus(); } catch (x) {} }, 40);
       };
 
-      // The floating shell (.zshell-float, z-index 9998) is a fixed child of <body>, so it renders ABOVE
-      // the full-screen hooks/file-browser overlays (z-index 9000). Hide it whenever either overlay opens
-      // — watch their `hidden` attribute and drop the pane's .active when an overlay becomes visible.
-      // Re-show is manual (⌘K "Terminal"), so we only hide, never auto-restore.
-      function hideFloatTerm() { if (pane && pane.classList.contains("active")) pane.classList.remove("active"); }
+      // Both terminals are .terminal-pane (z-index 9998, fixed) and so render ABOVE the full-screen
+      // hooks/file-browser overlays (z-index 9000). Keep them off the overlays:
+      //   • the floating shell (.zshell-float) — drop its .active when an overlay opens (manual re-show).
+      //   • the always-on IDE (#terminalPane) — hide via .ze-overlay-hidden while ANY overlay is open,
+      //     then restore when both close (it's the editor, so it must come back). visibility:hidden keeps
+      //     layout so xterm needs no reflow on restore.
+      function overlayOpen() {
+        return ["hooksOverlay", "fbOverlay"].some(function (id) { var o = document.getElementById(id); return o && !o.hidden; });
+      }
+      function syncOverlays() {
+        var open = overlayOpen();
+        if (open && pane && pane.classList.contains("active")) pane.classList.remove("active");
+        var ide = document.getElementById("terminalPane");
+        if (ide) ide.classList.toggle("ze-overlay-hidden", open);
+      }
       if (typeof MutationObserver === "function") {
         ["hooksOverlay", "fbOverlay"].forEach(function (id) {
           var ov = document.getElementById(id);
           if (!ov) return;
-          new MutationObserver(function () { if (!ov.hidden) hideFloatTerm(); }).observe(ov, { attributes: true, attributeFilter: ["hidden"] });
+          new MutationObserver(syncOverlays).observe(ov, { attributes: true, attributeFilter: ["hidden"] });
         });
       }
     })();

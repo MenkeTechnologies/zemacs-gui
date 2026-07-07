@@ -41,6 +41,10 @@
     #hooksStatus { font-size: 11px; color: var(--text-dim, #6a7a90); }
     #hooksCloseHost { margin-left: auto; }
     #zeHooksHost { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+    /* The always-on IDE terminal (.terminal-pane, z-index 9998) otherwise floats above the overlays
+       (z-index 9000); main.js adds this while a hooks/file-browser overlay is open, then removes it.
+       visibility (not display) keeps xterm's layout so it needs no reflow on restore. */
+    .terminal-pane.ze-overlay-hidden { visibility: hidden; }
   </style>
 </head>
 <body>
