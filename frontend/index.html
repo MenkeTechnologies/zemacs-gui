@@ -19,7 +19,7 @@
   <link rel="stylesheet" href="lib/hooks-editor.bundle.css">
   <style>
     /* Full-screen overlay chrome for the file browser (matches the sibling apps' .fb-overlay). */
-    .fb-overlay { position: fixed; inset: 0; z-index: 9000; background: var(--bg, #07070d);
+    .fb-overlay { position: fixed; inset: 0; z-index: 9000; background: var(--bg-primary, #07070d);
       display: flex; flex-direction: column; box-sizing: border-box; }
     .fb-overlay[hidden] { display: none; }
     .fb-overlay-bar { display: flex; align-items: center; justify-content: space-between;
@@ -32,7 +32,7 @@
     .fb-overlay > #tabFiles { flex: 1 1 auto; min-height: 0; overflow: hidden; }
     /* Embedded Stryke hooks editor overlay — mirrors .fb-overlay. Shown by window.openHooksEditor(),
        hidden by the close button. Hosts the ZGui.hooks chooser + Monaco editor in #zeHooksHost. */
-    .ze-hooks-overlay { position: fixed; inset: 0; z-index: 9000; background: var(--bg, #07070d);
+    .ze-hooks-overlay { position: fixed; inset: 0; z-index: 9000; background: var(--bg-primary, #07070d);
       display: flex; flex-direction: column; box-sizing: border-box; }
     .ze-hooks-overlay[hidden] { display: none; }
     .ze-hooks-bar { display: flex; align-items: center; gap: 12px;
