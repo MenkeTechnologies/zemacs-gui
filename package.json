@@ -18,7 +18,7 @@
     "monaco-editor": "0.55.1",
     "monaco-emacs": "0.3.0",
     "monaco-vim": "0.4.4",
-    "zgui-core": "github:MenkeTechnologies/zgui-core#v1.0.14"
+    "zgui-core": "github:MenkeTechnologies/zgui-core#v1.0.15"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
