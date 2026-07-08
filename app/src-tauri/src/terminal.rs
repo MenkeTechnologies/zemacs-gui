@@ -2,6 +2,9 @@
 //! ztunnel/Audio-Haxor). The editor (zemacs) runs inside this PTY: the frontend execs `zemacs` once
 //! the session is up. Forwards the session's `on_output`/`on_exit` callbacks to webview events.
 
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, State};
 use zpwr_embed_terminal::TerminalSession;
 
@@ -103,5 +106,101 @@ pub fn shell_term_resize(rows: u16, cols: u16, state: State<'_, ShellTermState>)
 #[tauri::command]
 pub fn shell_term_kill(state: State<'_, ShellTermState>) -> Result<(), String> {
     state.session.kill();
+    Ok(())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+// tmux tiling: arbitrary-N INDEPENDENT PTY sessions, one per ZGui.tmux pane. Each pane runs its own
+// zemacs editor in its own PTY (the frontend `exec`s the editor into it, exactly like the singleton
+// editor PTY above). Addressed by a u32 id so several editors tile side by side. Output is forwarded
+// to the "term-session-output" event as a { id, data } payload (a pane's xterm filters for its own
+// id); exit fires "term-session-exit" with the id. Independent of the singleton terminal_*/shell_term_*
+// PTYs, which are left untouched.
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+/// Managed state for the tmux per-pane PTY sessions.
+#[derive(Default)]
+pub struct SessionTermState {
+    sessions: Mutex<HashMap<u32, TerminalSession>>,
+    next_id: AtomicU32,
+}
+
+/// Payload for the per-session output event — tags each chunk with its session id so a pane's
+/// xterm can ignore output belonging to the other panes' sessions.
+#[derive(Clone, serde::Serialize)]
+struct SessionOutput {
+    id: u32,
+    data: String,
+}
+
+/// Spawn a new per-pane PTY session (login shell); returns its id. Ids start at 1 (0 is never
+/// handed out), so the frontend can treat 0 as "no session".
+#[tauri::command]
+pub async fn term_session_spawn(
+    rows: Option<u16>,
+    cols: Option<u16>,
+    app: AppHandle,
+    state: State<'_, SessionTermState>,
+) -> Result<u32, String> {
+    let id = state.next_id.fetch_add(1, Ordering::SeqCst) + 1;
+    let session = TerminalSession::new();
+    let app_out = app.clone();
+    let app_exit = app;
+    session.spawn(
+        rows.unwrap_or(40),
+        cols.unwrap_or(120),
+        move |text| {
+            let _ = app_out.emit(
+                "term-session-output",
+                SessionOutput { id, data: text.to_string() },
+            );
+        },
+        move || {
+            let _ = app_exit.emit("term-session-exit", id);
+        },
+    )?;
+    state
+        .sessions
+        .lock()
+        .map_err(|e| e.to_string())?
+        .insert(id, session);
+    Ok(id)
+}
+
+/// Write raw bytes (user keystrokes) into pane session `id`'s PTY.
+#[tauri::command]
+pub fn term_session_write(
+    id: u32,
+    data: String,
+    state: State<'_, SessionTermState>,
+) -> Result<(), String> {
+    let guard = state.sessions.lock().map_err(|e| e.to_string())?;
+    match guard.get(&id) {
+        Some(s) => s.write(&data),
+        None => Err(format!("no terminal session {id}")),
+    }
+}
+
+/// Notify pane session `id`'s PTY of a viewport resize.
+#[tauri::command]
+pub fn term_session_resize(
+    id: u32,
+    rows: u16,
+    cols: u16,
+    state: State<'_, SessionTermState>,
+) -> Result<(), String> {
+    let guard = state.sessions.lock().map_err(|e| e.to_string())?;
+    match guard.get(&id) {
+        Some(s) => s.resize(rows, cols),
+        None => Err(format!("no terminal session {id}")),
+    }
+}
+
+/// Kill pane session `id` and drop it from the map.
+#[tauri::command]
+pub fn term_session_kill(id: u32, state: State<'_, SessionTermState>) -> Result<(), String> {
+    if let Some(s) = state.sessions.lock().map_err(|e| e.to_string())?.remove(&id) {
+        s.kill();
+    }
     Ok(())
 }

@@ -267,6 +267,10 @@
   <script src="lib/zgui-core/webui/toolbar.js"></script>
   <script src="lib/zgui-core/webui/toggle-group.js"></script>
   <script src="lib/zgui-core/webui/combobox.js"></script>
+  <!-- tmux tiling: split-pane (dividers) + powerline (status bar) + tmux (the overlay WM) -->
+  <script src="lib/zgui-core/webui/split-pane.js"></script>
+  <script src="lib/zgui-core/webui/powerline.js"></script>
+  <script src="lib/zgui-core/webui/tmux.js"></script>
 
   <!-- the embedded PTY terminal (shared zpwr-embed-terminal frontend) -->
   <script src="xterm.js"></script>
@@ -289,6 +293,8 @@
 
   <!-- mount: appShell + menu bar + a fullscreen terminal that execs the zemacs editor -->
   <script src="main.js"></script>
+  <!-- tmux tiling mode: drives ZGui.tmux with an independent xterm+PTY zemacs editor per pane -->
+  <script src="tmux-config.js"></script>
 
   <!-- atomic form controls (ZGui.button / ZGui.select) — the hooks overlay close button + mode
        picker are built from these; hooks-runtime.js (ZGui.hooks) needs them too. -->

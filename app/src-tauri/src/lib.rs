@@ -18,7 +18,61 @@ mod text_tools;
 mod window_ops;
 mod workbench_ext;
 
+// ---- shared powerline status bar backend (ZGui.powerline) ------------------
+// Live system stats via the zwire-host lib linked in-process (no native-messaging
+// worker) — the powerline polls the `sys_stats` command. Mirrors zphoto/zoffice.
+struct SysMon {
+    sys: sysinfo::System,
+    nets: sysinfo::Networks,
+    disks: sysinfo::Disks,
+    last: std::time::Instant,
+}
+impl Default for SysMon {
+    fn default() -> Self {
+        SysMon {
+            sys: sysinfo::System::new(),
+            nets: sysinfo::Networks::new_with_refreshed_list(),
+            disks: sysinfo::Disks::new_with_refreshed_list(),
+            last: std::time::Instant::now(),
+        }
+    }
+}
+/// System stats for the powerline (real per-second deltas via persistent handles).
+#[tauri::command]
+fn sys_stats(state: tauri::State<'_, std::sync::Mutex<SysMon>>) -> serde_json::Value {
+    let mut m = state.lock().unwrap();
+    m.sys.refresh_cpu_usage();
+    m.sys.refresh_memory();
+    m.nets.refresh(true);
+    m.disks.refresh(true);
+    let dt = m.last.elapsed().as_secs_f64().max(0.1);
+    m.last = std::time::Instant::now();
+    zwire_host::sysmon::snapshot(dt, &m.nets, &m.disks, &m.sys)
+}
+
+// macOS: hold-to-repeat instead of the press-and-hold accent-character popup. The
+// editor runs in an xterm textarea; without this, holding e.g. `j` in zemacs pops
+// é/è/ê… instead of repeating. Registered in the (non-persistent) registration
+// domain, which AppKit reads live, so it takes effect this launch. Must run before
+// the webview/AppKit text input is created.
+#[cfg(target_os = "macos")]
+fn disable_press_and_hold() {
+    use objc2::runtime::AnyObject;
+    use objc2::{class, msg_send};
+    unsafe {
+        let key: *mut AnyObject =
+            msg_send![class!(NSString), stringWithUTF8String: c"ApplePressAndHoldEnabled".as_ptr()];
+        let val: *mut AnyObject = msg_send![class!(NSNumber), numberWithBool: false];
+        let dict: *mut AnyObject =
+            msg_send![class!(NSDictionary), dictionaryWithObject: val, forKey: key];
+        let defaults: *mut AnyObject = msg_send![class!(NSUserDefaults), standardUserDefaults];
+        let _: () = msg_send![defaults, registerDefaults: dict];
+    }
+}
+
 pub fn run() {
+    #[cfg(target_os = "macos")]
+    disable_press_and_hold();
     tauri::Builder::default()
         // Single-instance MUST be the first plugin: a 2nd launch (e.g. `mvim file`) forwards its file
         // args into the already-running window instead of opening a second one.
@@ -30,12 +84,15 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .manage(terminal::TerminalState::default())
         .manage(terminal::ShellTermState::default())
+        .manage(terminal::SessionTermState::default())
         .manage(open_intake::OpenQueue::default())
         // Shared file-browser directory watcher state (zpwr-file-browser crate).
         .manage(zpwr_file_browser::commands::watcher_state())
         // Stryke language server bridge (Hooks editor LSP completion/hover/diagnostics).
         .manage(stryke_lsp::StrykeLspState::default())
+        .manage(std::sync::Mutex::new(SysMon::default()))
         .invoke_handler(tauri::generate_handler![
+            sys_stats,
             terminal::terminal_spawn,
             terminal::terminal_write,
             terminal::terminal_resize,
@@ -44,6 +101,10 @@ pub fn run() {
             terminal::shell_term_write,
             terminal::shell_term_resize,
             terminal::shell_term_kill,
+            terminal::term_session_spawn,
+            terminal::term_session_write,
+            terminal::term_session_resize,
+            terminal::term_session_kill,
             fs_ops::list_dir,
             fs_ops::home_dir,
             window_ops::toggle_fullscreen,
