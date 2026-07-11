@@ -189,6 +189,10 @@
         load: function () { try { return JSON.parse(localStorage.getItem("zemacs.tmux") || "{}"); } catch (e) { return {}; } },
         save: function (o) { try { localStorage.setItem("zemacs.tmux", JSON.stringify(o)); } catch (e) {} }
       },
+      // zemacs runs in an xterm textarea (an editable), so without this tmux.js would let every
+      // C-b pass through to the editor (its detached-editable "Ctrl-B is Bold" guard). Opt in so
+      // C-b is the tmux prefix globally — C-b c/%/" reach tmux even while the editor is focused.
+      prefixInEditable: true,
       openEmptyPane: function (bodyEl) { return Promise.resolve(mountInto(bodyEl)); },
       renderPane: function (bodyEl, ref) { mountInto(bodyEl); },
       paneLabel: function (ref) { return "zemacs " + ((ref && ref.id) || ""); }
