@@ -2,6 +2,7 @@
 // PTY terminal (zpwr-embed-terminal crate); this binary registers the terminal commands, the
 // MacVim-style GUI helpers (fs/window/open-intake), and wires the PTY's output/exit to the webview.
 
+mod bus;
 mod edit_ops;
 mod editor_tools;
 mod encoding_ops;
@@ -91,6 +92,8 @@ pub fn run() {
         // Stryke language server bridge (Hooks editor LSP completion/hover/diagnostics).
         .manage(stryke_lsp::StrykeLspState::default())
         .manage(std::sync::Mutex::new(SysMon::default()))
+        // GUI Automation Bus: per-request reply channels for webview-forwarded verbs (bus::forward).
+        .manage(bus::pending_state())
         .invoke_handler(tauri::generate_handler![
             sys_stats,
             terminal::terminal_spawn,
@@ -222,6 +225,10 @@ pub fn run() {
             stryke_lsp::stryke_lsp_stop,
             stryke_lsp::run_stryke_hook,
             stryke_lsp::run_bash,
+            // GUI Automation Bus: webview forwards replies/events here; reveal opens the scripts dir.
+            bus::zgui_bridge_reply,
+            bus::zgui_bridge_event,
+            bus::zgui_reveal_scripts,
         ])
         .setup(|app| {
             // Ensure the app data + log dirs exist and seed the log file, so the appShell
@@ -257,6 +264,10 @@ pub fn run() {
                     open_intake::ingest(&h, urls);
                 });
             }
+
+            // Open the GUI Automation Bus socket so `App::open("zemacs-gui")` / `App::here()->verbs()`
+            // resolve to this app's scriptable appShell surface.
+            bus::start(&app.handle());
             Ok(())
         })
         .build(tauri::generate_context!())

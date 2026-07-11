@@ -22,3 +22,6 @@
 [submodule "crates/zwire-host"]
 	path = crates/zwire-host
 	url = https://github.com/MenkeTechnologies/zwire-host.git
+[submodule "crates/zgui-bridge"]
+	path = crates/zgui-bridge
+	url = https://github.com/MenkeTechnologies/zgui-bridge.git

@@ -29,6 +29,9 @@ tauri-plugin-single-instance = "2"
 tauri-plugin-deep-link = "2"
 # Open the log file / data dir in the OS default app (appShell Diagnostics buttons).
 tauri-plugin-opener = "2"
+# GUI Automation Bus: per-app zgui-bridge Unix socket so stryke scripts can drive the whole appShell
+# surface by name (App::open("zemacs-gui")) or from a hook (App::here()->verbs()).
+zgui-bridge = { path = "../../crates/zgui-bridge" }
 # Shared embedded PTY terminal (also used by Audio-Haxor, ztunnel, ztranslator, zpwr-daw).
 # The editor (zemacs) runs inside this terminal.
 zpwr-embed-terminal = { path = "../../crates/zpwr-embed-terminal" }
