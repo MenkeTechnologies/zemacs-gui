@@ -4,7 +4,7 @@
 
 [package]
 name = "zemacs-gui"
-version = "0.2.7"
+version = "0.2.8"
 edition = "2021"
 description = "zemacs-gui — desktop GUI wrapper around the zemacs editor (Helix fork), Tauri v2 + zgui baseline"
 license = "UNLICENSED"
