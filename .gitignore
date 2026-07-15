@@ -24,3 +24,4 @@ app/src-tauri/binaries/
 app/src-tauri/target/
 app/src-tauri/gen/
 frontend/lib/zgui-core/
+dist/

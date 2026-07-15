@@ -10,7 +10,8 @@
     "tauri": "tauri",
     "test": "bash scripts/test.sh",
     "test:js": "node --test crates/zemacs-gui-core/webui/menu.test.cjs",
-    "test:rust": "cargo test --manifest-path app/src-tauri/Cargo.toml"
+    "test:rust": "cargo test --manifest-path app/src-tauri/Cargo.toml",
+    "release-macos": "bash scripts/release-macos.sh"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",

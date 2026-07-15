@@ -49,7 +49,7 @@ if [ -n "$APP" ] && [ -d "$APP" ]; then
   if [ "$(uname -s)" != "Darwin" ]; then
     echo "localinstall: .app deploy is macOS-only" >&2; exit 1
   fi
-  DEST="/Applications/$PRODUCT.app"
+  DEST="${LOCALINSTALL_DEST:-/Applications/$PRODUCT.app}"
   osascript -e "quit app \"$PRODUCT\"" >/dev/null 2>&1 || true
   sleep 1
   [ -e "$DEST" ] && command rm -rf "$DEST"
