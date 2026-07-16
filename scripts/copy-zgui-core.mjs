@@ -6,7 +6,7 @@
 // git dependency ("zgui-core": "github:MenkeTechnologies/zgui-core#vX"). `pnpm install` refreshes it
 // to the pinned tag; there is no committed copy and no per-app submodule pin to drift out of sync.
 //
-// zemacs-gui's npm project is the REPO ROOT (package.json + node_modules + scripts live there, not in
+// zmax-gui's npm project is the REPO ROOT (package.json + node_modules + scripts live there, not in
 // app/), so paths resolve relative to the repo root — this script's dir (scripts/) is a child of it.
 import { existsSync, rmSync, cpSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";

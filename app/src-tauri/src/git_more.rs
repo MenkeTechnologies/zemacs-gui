@@ -194,7 +194,7 @@ mod tests {
     #[test]
     fn repo_log_show_diff_in_temp_repo() {
         let dir = std::env::temp_dir().join(format!(
-            "zemacs-gui-gitmore-{}-{}",
+            "zmax-gui-gitmore-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)

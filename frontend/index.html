@@ -4,13 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <title>zemacs</title>
+  <title>zmax</title>
   <!-- the whole zgui-core component library (incl. appShell/crt/splash chrome) in one sheet -->
   <link rel="stylesheet" href="lib/zgui-core/webui/all.css">
   <!-- embedded terminal styles (zpwr-embed-terminal frontend) -->
   <link rel="stylesheet" href="xterm.css">
   <link rel="stylesheet" href="terminal.css">
-  <link rel="stylesheet" href="zemacs.css">
+  <link rel="stylesheet" href="zmax.css">
   <!-- app-local project-workbench overlays (panels.js) -->
   <link rel="stylesheet" href="panels.css">
   <!-- shared multi-pane file browser (zpwr-file-browser): copied by copy-file-browser.mjs -->
@@ -48,7 +48,7 @@
   </style>
 </head>
 <body>
-  <!-- ZGui.appShell mounts here; the zemacs editor runs in a fullscreen terminal inside shell.body -->
+  <!-- ZGui.appShell mounts here; the zmax editor runs in a fullscreen terminal inside shell.body -->
   <div id="app"></div>
 
   <!-- Shared multi-pane file browser overlay (zpwr-file-browser). Hidden until opened from the ⌘K
@@ -284,7 +284,7 @@
   <script src="terminal.js"></script>
 
   <!-- OS-native application menu API (ZGui.menu.install/buildSpec); menu.js overrides buildSpec so the
-       appShell's single install() realizes the full zemacs menu bar. Must load before menu.js. -->
+       appShell's single install() realizes the full zmax menu bar. Must load before menu.js. -->
   <script src="lib/zgui-core/webui/menu.js"></script>
 
   <!-- the MacVim GUI bridge (menu/shortcuts/dialogs → PTY); must load before main.js mounts -->
@@ -298,26 +298,26 @@
   <!-- app-local project workbench (quick-open, find-in-files, recent, project files, git); before main.js -->
   <script src="panels.js"></script>
 
-  <!-- mount: appShell + menu bar + a fullscreen terminal that execs the zemacs editor -->
+  <!-- mount: appShell + menu bar + a fullscreen terminal that execs the zmax editor -->
   <script src="main.js"></script>
-  <!-- tmux tiling mode: drives ZGui.tmux with an independent xterm+PTY zemacs editor per pane -->
+  <!-- tmux tiling mode: drives ZGui.tmux with an independent xterm+PTY zmax editor per pane -->
   <script src="tmux-config.js"></script>
 
   <!-- atomic form controls (ZGui.button / ZGui.select) — the hooks overlay close button + mode
        picker are built from these; hooks-runtime.js (ZGui.hooks) needs them too. -->
   <script src="lib/zgui-core/webui/widgets.js"></script>
   <!-- Embedded Stryke hooks editor: the Monaco bundle (window.HooksEditor) + the hooks core
-       (ZGui.hooks), then the wiring that publishes zemacs-gui's hook points + a stryke runner and
+       (ZGui.hooks), then the wiring that publishes zmax-gui's hook points + a stryke runner and
        defines window.openHooksEditor to mount the chooser into the #hooksOverlay overlay — so the
        ⌘K "Hooks editor" command opens it IN-APP (like the file browser), not a separate window. -->
   <script src="lib/hooks-editor.bundle.js"></script>
   <script src="lib/zgui-core/webui/hooks-runtime.js"></script>
   <script>
     (function () {
-      // zemacs-gui's hook points (editor lifecycle events); the core adds the global app.* hooks
+      // zmax-gui's hook points (editor lifecycle events); the core adds the global app.* hooks
       // above these.
-      var ZEMACS_HOOKS = [
-        { id: "editor.started",   label: "Editor started",   desc: "after the zemacs PTY comes up" },
+      var ZMAX_HOOKS = [
+        { id: "editor.started",   label: "Editor started",   desc: "after the zmax PTY comes up" },
         { id: "editor.restarted", label: "Editor restarted", desc: "after a restart-editor action" },
         { id: "file.opened",      label: "File opened",      desc: "after a file is opened in the editor" },
         { id: "file.saved",       label: "File saved",       desc: "after a buffer is written" },
@@ -337,12 +337,12 @@
         } catch (e) {}
         return Promise.reject(new Error("stryke runner unavailable (not a Tauri host)"));
       }
-      // Publish zemacs-gui's hooks + runner and ARM the lifecycle NOW, at app boot (matches zcite) — boot()
+      // Publish zmax-gui's hooks + runner and ARM the lifecycle NOW, at app boot (matches zcite) — boot()
       // calls installLifecycle() so app.start + editor.*/file.*/git.*/terminal.* hooks fire at real launch.
       // Previously setHooks/setRunner ran only when the editor opened (and setRunner no longer auto-arms the
       // lifecycle), so no hook ever fired until then.
       if (window.ZGui && window.ZGui.hooks && typeof window.ZGui.hooks.boot === "function") {
-        window.ZGui.hooks.boot({ ns: "zemacs", hooks: ZEMACS_HOOKS, runner: runStryke });
+        window.ZGui.hooks.boot({ ns: "zmax", hooks: ZMAX_HOOKS, runner: runStryke });
       }
       var _hooksInited = false;
       window.openHooksEditor = function () {
@@ -373,9 +373,9 @@
               }
             }
           } catch (e) { if (status) status.textContent = "LSP off: " + ((e && e.message) || e); }
-          var MODE_KEY = "zemacsHooksMode";
+          var MODE_KEY = "zmaxHooksMode";
           var savedMode = (function () { try { return localStorage.getItem(MODE_KEY) || "default"; } catch (e) { return "default"; } })();
-          var mounted = window.ZGui.hooks.mount(host, { ns: "zemacs", mode: savedMode });
+          var mounted = window.ZGui.hooks.mount(host, { ns: "zmax", mode: savedMode });
           var modeHost = document.getElementById("hooksModeHost");
           if (modeHost && mounted && mounted.editor && typeof ZGui.select === "function") {
             var sel = ZGui.select({

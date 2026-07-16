@@ -1,4 +1,4 @@
-/* zemacs-gui project-workbench panels (panels.js). App-local styling for the quick-open / find-in-files
+/* zmax-gui project-workbench panels (panels.js). App-local styling for the quick-open / find-in-files
  * / recent / project-files / git overlays. Reuses the zgui-core cyberpunk palette vars. Plain
  * border/background/padding only (no transitions/shadows/gradients) so it renders identically in the
  * release WebKit bundle. */

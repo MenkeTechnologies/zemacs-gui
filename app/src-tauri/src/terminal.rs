@@ -1,5 +1,5 @@
 //! Embedded PTY terminal — thin Tauri adapter over the shared `zpwr-embed-terminal` crate (same as
-//! ztunnel/Audio-Haxor). The editor (zemacs) runs inside this PTY: the frontend execs `zemacs` once
+//! ztunnel/Audio-Haxor). The editor (zmax) runs inside this PTY: the frontend execs `zmax` once
 //! the session is up. Forwards the session's `on_output`/`on_exit` callbacks to webview events.
 
 use std::collections::HashMap;
@@ -15,7 +15,7 @@ pub struct TerminalState {
 }
 
 /// Spawn a new PTY session (login shell). Kills any existing session first. The frontend then runs
-/// `exec zemacs` so the editor replaces the shell and fills the window.
+/// `exec zmax` so the editor replaces the shell and fills the window.
 #[tauri::command]
 pub async fn terminal_spawn(
     rows: Option<u16>,
@@ -58,7 +58,7 @@ pub fn terminal_kill(state: State<'_, TerminalState>) -> Result<(), String> {
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 // Second, INDEPENDENT PTY: the floating shell terminal the user pops open on top of the IDE (⌘K
-// "Terminal"). It runs a plain login shell — NOT `zemacs --ide` — so it's a real scratch terminal,
+// "Terminal"). It runs a plain login shell — NOT `zmax --ide` — so it's a real scratch terminal,
 // separate from the editor's PTY above. Its own state + `shell-term-output`/`shell-term-exit` events.
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -111,7 +111,7 @@ pub fn shell_term_kill(state: State<'_, ShellTermState>) -> Result<(), String> {
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 // tmux tiling: arbitrary-N INDEPENDENT PTY sessions, one per ZGui.tmux pane. Each pane runs its own
-// zemacs editor in its own PTY (the frontend `exec`s the editor into it, exactly like the singleton
+// zmax editor in its own PTY (the frontend `exec`s the editor into it, exactly like the singleton
 // editor PTY above). Addressed by a u32 id so several editors tile side by side. Output is forwarded
 // to the "term-session-output" event as a { id, data } payload (a pane's xterm filters for its own
 // id); exit fires "term-session-exit" with the id. Independent of the singleton terminal_*/shell_term_*

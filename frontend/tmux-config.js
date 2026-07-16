@@ -1,4 +1,4 @@
-// zemacs-gui — drive the shared ZGui.tmux (zgui-core) with an INDEPENDENT zemacs editor per pane.
+// zmax-gui — drive the shared ZGui.tmux (zgui-core) with an INDEPENDENT zmax editor per pane.
 // Unlike the DOM-view consumers (zemail/zphoto), the "view" here is a terminal: each pane gets its
 // own xterm + its own backend PTY session (term_session_* commands), and execs the editor into it,
 // exactly like main.js's fullscreen editor. Split the window (C-b %/") to run several editors side by
@@ -11,10 +11,10 @@
   // strips inline styles). Idempotent.
   (function () {
     try {
-      if (typeof document === "undefined" || document.getElementById("zemacs-tmux-css")) return;
+      if (typeof document === "undefined" || document.getElementById("zmax-tmux-css")) return;
       var s = document.createElement("style");
-      s.id = "zemacs-tmux-css";
-      s.textContent = ".zemacs-tmux-host { width: 100%; height: 100%; min-height: 0; overflow: auto; position: relative; }"
+      s.id = "zmax-tmux-css";
+      s.textContent = ".zmax-tmux-host { width: 100%; height: 100%; min-height: 0; overflow: auto; position: relative; }"
         // The primary editor terminal (#terminalPane .terminal-pane) is position:fixed
         // z-index:9998 — ABOVE the tmux overlay (#zg-tmux, z-index 8500) — so it covers
         // the tiled panes. Hide it whenever the overlay is open so the tmux-hosted
@@ -98,7 +98,7 @@
   function mountInto(bodyEl) {
     bodyEl.textContent = "";
     var host = document.createElement("div");
-    host.className = "zemacs-tmux-host";
+    host.className = "zmax-tmux-host";
     bodyEl.appendChild(host);
 
     var C = core(), E = events();
@@ -132,10 +132,10 @@
       sessionId = id; alive = true;
       setTimeout(function () {
         if (disposed) return;
-        C.invoke("zemacs_exec_command").then(function (cmd) {
-          C.invoke("term_session_write", { id: sessionId, data: "exec " + (cmd || "zemacs") + " --ide\n" }).catch(function () {});
+        C.invoke("zmax_exec_command").then(function (cmd) {
+          C.invoke("term_session_write", { id: sessionId, data: "exec " + (cmd || "zmax") + " --ide\n" }).catch(function () {});
         }).catch(function () {
-          C.invoke("term_session_write", { id: sessionId, data: "exec zemacs --ide\n" }).catch(function () {});
+          C.invoke("term_session_write", { id: sessionId, data: "exec zmax --ide\n" }).catch(function () {});
         });
       }, 800);
     }).catch(function (err) { try { term.write("\x1b[31mspawn failed: " + err + "\x1b[0m\r\n"); } catch (e) {} });
@@ -186,16 +186,16 @@
     if (!window.ZGui || !window.ZGui.tmux) return;
     window.ZGui.tmux.init({
       prefs: {
-        load: function () { try { return JSON.parse(localStorage.getItem("zemacs.tmux") || "{}"); } catch (e) { return {}; } },
-        save: function (o) { try { localStorage.setItem("zemacs.tmux", JSON.stringify(o)); } catch (e) {} }
+        load: function () { try { return JSON.parse(localStorage.getItem("zmax.tmux") || "{}"); } catch (e) { return {}; } },
+        save: function (o) { try { localStorage.setItem("zmax.tmux", JSON.stringify(o)); } catch (e) {} }
       },
-      // zemacs runs in an xterm textarea (an editable), so without this tmux.js would let every
+      // zmax runs in an xterm textarea (an editable), so without this tmux.js would let every
       // C-b pass through to the editor (its detached-editable "Ctrl-B is Bold" guard). Opt in so
       // C-b is the tmux prefix globally — C-b c/%/" reach tmux even while the editor is focused.
       prefixInEditable: true,
       openEmptyPane: function (bodyEl) { return Promise.resolve(mountInto(bodyEl)); },
       renderPane: function (bodyEl, ref) { mountInto(bodyEl); },
-      paneLabel: function (ref) { return "zemacs " + ((ref && ref.id) || ""); }
+      paneLabel: function (ref) { return "zmax " + ((ref && ref.id) || ""); }
     });
   }
   ready(boot);

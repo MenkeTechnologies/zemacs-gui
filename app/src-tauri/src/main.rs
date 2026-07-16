@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    zemacs_gui_lib::run();
+    zmax_gui_lib::run();
 }

@@ -1,4 +1,4 @@
-// zemacs-gui — the thin Tauri host for the zemacs editor (Helix fork). The editor runs in an embedded
+// zmax-gui — the thin Tauri host for the zmax editor (Helix fork). The editor runs in an embedded
 // PTY terminal (zpwr-embed-terminal crate); this binary registers the terminal commands, the
 // MacVim-style GUI helpers (fs/window/open-intake), and wires the PTY's output/exit to the webview.
 
@@ -52,7 +52,7 @@ fn sys_stats(state: tauri::State<'_, std::sync::Mutex<SysMon>>) -> serde_json::V
 }
 
 // macOS: hold-to-repeat instead of the press-and-hold accent-character popup. The
-// editor runs in an xterm textarea; without this, holding e.g. `j` in zemacs pops
+// editor runs in an xterm textarea; without this, holding e.g. `j` in zmax pops
 // é/è/ê… instead of repeating. Registered in the (non-persistent) registration
 // domain, which AppKit reads live, so it takes effect this launch. Must run before
 // the webview/AppKit text input is created.
@@ -114,7 +114,7 @@ pub fn run() {
             window_ops::set_blur,
             window_ops::focus_window,
             open_intake::take_pending_opens,
-            sidecar::zemacs_exec_command,
+            sidecar::zmax_exec_command,
             sidecar::stryke_bin_path,
             // Project workbench (panels.js): quick-open, find-in-files, tree file ops, recent files,
             // file stats, git.
@@ -244,18 +244,18 @@ pub fn run() {
                     let _ = std::fs::OpenOptions::new()
                         .create(true)
                         .append(true)
-                        .open(d.join("zemacs.log"));
+                        .open(d.join("zmax.log"));
                 }
             }
 
-            // Cold launch with file args (`zemacs-gui file…`) — queue them for the frontend to drain.
+            // Cold launch with file args (`zmax-gui file…`) — queue them for the frontend to drain.
             let handle = app.handle().clone();
             open_intake::ingest(
                 &handle,
                 open_intake::paths_from_argv(&std::env::args().collect::<Vec<_>>()),
             );
 
-            // mvim:// / zemacs:// URLs delivered while running.
+            // mvim:// / zmax:// URLs delivered while running.
             #[cfg(desktop)]
             {
                 use tauri_plugin_deep_link::DeepLinkExt;
@@ -266,13 +266,13 @@ pub fn run() {
                 });
             }
 
-            // Open the GUI Automation Bus socket so `App::open("zemacs-gui")` / `App::here()->verbs()`
+            // Open the GUI Automation Bus socket so `App::open("zmax-gui")` / `App::here()->verbs()`
             // resolve to this app's scriptable appShell surface.
             bus::start(&app.handle());
             Ok(())
         })
         .build(tauri::generate_context!())
-        .expect("error while building zemacs-gui")
+        .expect("error while building zmax-gui")
         .run(|app, event| {
             // Finder double-click / `open file` arrives as a macOS Apple-event, not argv.
             if let tauri::RunEvent::Opened { urls } = event {

@@ -80,7 +80,7 @@ const marker = join(outDir, '.stryke-release');
 try {
     // Authenticate the API call when a token is available (CI) to avoid the 60/hr unauthenticated
     // rate limit; the asset download itself is from the public release CDN and needs no auth.
-    const ghHeaders = { 'User-Agent': 'zemacs-gui-build', Accept: 'application/vnd.github+json' };
+    const ghHeaders = { 'User-Agent': 'zmax-gui-build', Accept: 'application/vnd.github+json' };
     const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
     if (token) ghHeaders.Authorization = `Bearer ${token}`;
     const rel = await (await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, {

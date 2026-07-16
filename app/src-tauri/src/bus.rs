@@ -1,9 +1,9 @@
-//! GUI Automation Bus wiring for zemacs-gui (see GUI_AUTOMATION_BUS.md). Opens the per-app
+//! GUI Automation Bus wiring for zmax-gui (see GUI_AUTOMATION_BUS.md). Opens the per-app
 //! `zgui-bridge` Unix socket so a stryke script can drive the whole app by name —
-//! `App::open("zemacs-gui")->call(...)`, or `App::here()` from a hook running inside the app.
+//! `App::open("zmax-gui")->call(...)`, or `App::here()` from a hook running inside the app.
 //!
-//! zemacs-gui has no `-core` engine of its own, so EVERY verb/state/`verbs()` query is forwarded to
-//! the webview's `ZGui.automation` surface (the appShell actions + the zemacs menu flattened into ⌘K)
+//! zmax-gui has no `-core` engine of its own, so EVERY verb/state/`verbs()` query is forwarded to
+//! the webview's `ZGui.automation` surface (the appShell actions + the zmax menu flattened into ⌘K)
 //! via the automation-host.js dispatcher, which runs the registered verb and reports back through
 //! `zgui_bridge_reply`. So the entire appShell surface — not an engine — is what a script sees.
 
@@ -22,13 +22,13 @@ static BRIDGE: OnceLock<Arc<Bridge>> = OnceLock::new();
 /// Per-request reply channels for webview-forwarded calls, keyed by request id.
 type Pending = Arc<Mutex<HashMap<u64, Sender<Result<Value, String>>>>>;
 
-struct ZemacsBus {
+struct ZmaxBus {
     app: AppHandle,
     pending: Pending,
     next_id: AtomicU64,
 }
 
-impl ZemacsBus {
+impl ZmaxBus {
     /// Forward one request to the webview's `ZGui.automation` (via automation-host.js) and block the
     /// socket thread until `zgui_bridge_reply` fulfills it (or a timeout). `kind` is "call"|"get"|"verbs".
     fn forward(&self, kind: &str, name: &str, args: Value) -> Result<Value, String> {
@@ -57,7 +57,7 @@ impl ZemacsBus {
     }
 }
 
-impl Handler for ZemacsBus {
+impl Handler for ZmaxBus {
     fn call(&self, verb: &str, args: Value) -> Result<Value, String> {
         self.forward("call", verb, args)
     }
@@ -67,7 +67,7 @@ impl Handler for ZemacsBus {
     }
 
     /// The whole surface: whatever the webview registered in `ZGui.automation` (appShell actions +
-    /// the zemacs menu). Best-effort — an empty webview reply yields an empty (but valid) manifest.
+    /// the zmax menu). Best-effort — an empty webview reply yields an empty (but valid) manifest.
     fn surface(&self) -> Value {
         let mut verbs: Vec<Value> = Vec::new();
         let mut state: Vec<Value> = Vec::new();
@@ -83,7 +83,7 @@ impl Handler for ZemacsBus {
                 events.extend(e.iter().cloned());
             }
         }
-        json!({ "app": "zemacs-gui", "verbs": verbs, "state": state, "events": events })
+        json!({ "app": "zmax-gui", "verbs": verbs, "state": state, "events": events })
     }
 }
 
@@ -135,17 +135,17 @@ pub fn pending_state() -> Pending {
     P.get_or_init(|| Arc::new(Mutex::new(HashMap::new()))).clone()
 }
 
-/// Open zemacs-gui's bus socket. Called once from `setup()`.
+/// Open zmax-gui's bus socket. Called once from `setup()`.
 pub fn start(app: &AppHandle) {
-    let handler = ZemacsBus {
+    let handler = ZmaxBus {
         app: app.clone(),
         pending: pending_state(),
         next_id: AtomicU64::new(1),
     };
-    match serve("zemacs-gui", handler) {
+    match serve("zmax-gui", handler) {
         Ok(bridge) => {
             let _ = BRIDGE.set(bridge);
         }
-        Err(e) => eprintln!("zemacs-gui: could not open automation-bus socket: {e}"),
+        Err(e) => eprintln!("zmax-gui: could not open automation-bus socket: {e}"),
     }
 }

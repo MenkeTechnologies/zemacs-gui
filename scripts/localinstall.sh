@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build zemacs-gui and FORCE-install the freshly built artifact locally:
+# Build zmax-gui and FORCE-install the freshly built artifact locally:
 #   * a .app bundle  -> /Applications
 #   * a plain binary -> ~/.cargo/bin
 # Force-syncs nested submodules to their pinned commits first so the build always
@@ -7,7 +7,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-PRODUCT="zemacs-gui"
+PRODUCT="zmax-gui"
 
 # bundle_dmg.sh mounts a scratch rw.*.dmg, populates it, then converts it to the final read-only DMG.
 # An interrupted build leaves that scratch image ATTACHED — the next `hdiutil attach` then fails and

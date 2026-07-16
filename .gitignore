@@ -9,7 +9,7 @@ frontend/i18n.js
 frontend/i18n/
 # GUI surface copied from crates/zemacs-gui-core/webui by scripts/copy-webui.mjs (single source)
 frontend/menu.js
-frontend/zemacs.css
+frontend/zmax.css
 # Shared file browser copied from crates/zpwr-file-browser by scripts/copy-file-browser.mjs
 frontend/file-browser.js
 frontend/file-browser.css
@@ -18,7 +18,7 @@ frontend/lib/fb-i18n/
 frontend/lib/hooks-editor.bundle.js
 frontend/lib/hooks-editor.bundle.css
 frontend/lib/hooks-editor.worker.js
-# Bundled sidecars (stryke + zemacs binaries) staged by scripts/prepare-*-sidecar.mjs — build artifacts
+# Bundled sidecars (stryke + zmax binaries) staged by scripts/prepare-*-sidecar.mjs — build artifacts
 app/src-tauri/binaries/
 # Rust build artifacts
 app/src-tauri/target/

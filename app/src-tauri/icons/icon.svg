@@ -38,5 +38,5 @@
   <!-- wordmark strip, width-pinned -->
   <text x="512" y="782" font-family="Orbitron" font-weight="700" font-size="92"
         textLength="600" lengthAdjust="spacingAndGlyphs"
-        fill="#aa00ff" text-anchor="middle" opacity="0.9">ZEMACS</text>
+        fill="#aa00ff" text-anchor="middle" opacity="0.9">ZMAX</text>
 </svg>

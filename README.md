@@ -11,25 +11,25 @@
 ![GUI](https://img.shields.io/badge/GUI-windowed%20editor-ff2a6d?style=flat-square)
 ![license](https://img.shields.io/badge/license-MPL--2.0-39ff14?style=flat-square)
 
-### `[A NATIVE DESKTOP GUI FOR ZEMACS // THE WAY MACVIM WRAPS VIM]`
+### `[A NATIVE DESKTOP GUI FOR ZMAX // THE WAY MACVIM WRAPS VIM]`
 
-**zemacs-gui** is a native desktop GUI for the
-[`zemacs`](https://github.com/MenkeTechnologies/zemacs) editor — the Rust Emacs
+**zmax-gui** is a native desktop GUI for the
+[`zmax`](https://github.com/MenkeTechnologies/zmax) editor — the Rust Emacs
 port (a Helix/Vim-style modal core built out toward Spacemacs). It wraps the
-zemacs modal-editing core in a windowed front-end, the way MacVim wraps the Vim
+zmax modal-editing core in a windowed front-end, the way MacVim wraps the Vim
 CLI editor: the same editor underneath, a native window on top. Free and open
 source.
 
 ## Architecture
 
-A thin **Tauri v2** shell that runs the `zemacs` binary in an **embedded PTY terminal**
+A thin **Tauri v2** shell that runs the `zmax` binary in an **embedded PTY terminal**
 ([`zpwr-embed-terminal`](https://github.com/MenkeTechnologies/zpwr-embed-terminal)) filling the
 window, wrapped in the shared **zgui-core** app baseline (`ZGui.appShell`: command palette, colour
 schemes, settings, CRT/splash). The editor is the same modal core; the window, chrome and theming are
 the GUI. Standard MenkeTechnologies GUI layout — see `GUI_APP_ARCHITECTURE.md` in the meta repo.
 
 ```
-zemacs-gui/
+zmax-gui/
 ├─ app/src-tauri/        Tauri host: terminal + fs + window + open-intake + project commands
 │   ├─ terminal.rs       PTY spawn/write/resize/kill
 │   ├─ fs_ops.rs         list_dir/home_dir — backs the Open dialog
@@ -46,14 +46,14 @@ zemacs-gui/
 │   ├─ workbench_ext.rs  persisted snippets + project code-stats (files/lines by extension)
 │   └─ open_intake.rs    CLI / Finder / mvim:// file opens → :open in the PTY
 ├─ crates/
-│   ├─ zemacs            the editor — vendored submodule, built → bundled sidecar
+│   ├─ zmax            the editor — vendored submodule, built → bundled sidecar
 │   ├─ zpwr-embed-terminal   shared PTY engine (submodule)
 │   ├─ zpwr-file-browser     shared multi-pane file browser: `crate/` (fs_* commands, watcher) + webui
 │   └─ zpwr-i18n             shared 27-locale i18n runtime + catalogs (submodule)
 ├─ scripts/
 │   ├─ mvim              terminal launcher (open files in the running window)
 │   ├─ copy-{webui,embed-terminal,i18n,file-browser}.mjs   sync shared webui into frontend/
-│   └─ prepare-{zemacs,stryke}-sidecar.mjs   stage the bundled binaries
+│   └─ prepare-{zmax,stryke}-sidecar.mjs   stage the bundled binaries
 └─ frontend/
    ├─ index.html · main.js      mounts ZGui.appShell + the fullscreen terminal
    ├─ menu.js                   the MacVim GUI surface (all zgui widgets → PTY)
@@ -99,7 +99,7 @@ results are fast and the editor stays the single source of truth.
   zemail / ztranslator / zstation), opened as a full-screen overlay: multiple panes and tabs,
   sortable + resizable columns, fuzzy filter, color labels, folder-tree sidebar, text/hex/image
   quicklook + preview pane, git status, dedup, diff, grep, compress/extract, hash, xattrs,
-  disk-usage and live fs-change watch. Double-click (or Enter) opens the file **in the zemacs
+  disk-usage and live fs-change watch. Double-click (or Enter) opens the file **in the zmax
   buffer** — the browser's "open" is wired to drive the editor, not the OS default app. Backed by
   the crate's `fs_*` Tauri commands + the directory watcher (`zpwr_file_browser::commands`); the
   front end is synced into `frontend/` by `copy-file-browser.mjs`, bridged through `fb-backend.js`.
@@ -156,7 +156,7 @@ so the embedded terminal is never reflowed.
 
 The GUI wraps the modal core the way MacVim wraps Vim. Every surface is a **zgui-core widget**; each
 action is bridged to the editor by writing an ex-command into the PTY (the GUI never edits files
-itself, it drives `zemacs`). zemacs (a Helix fork) has **both** buffers and a real vim **tabpage**
+itself, it drives `zmax`). zmax (a Helix fork) has **both** buffers and a real vim **tabpage**
 family, so the GUI drives each with its own menu — the **Buffers** menu cycles/closes open buffers,
 the **Tabs** menu manages tabpages (each holds its own split layout).
 
@@ -210,7 +210,7 @@ the **Tabs** menu manages tabpages (each holds its own split layout).
   expand every abbrev in the region (`:expand-region-abbrevs`); clear all (`:abclear`) or kill every
   table (`:kill-all-abbrevs`); and load / save the table to a file (`:read-abbrev-file`, reusing the
   Open browser / `:write-abbrev-file`, reusing the Save-As path prompt).
-- **Git menu** — zemacs-vcs actions bridged into the PTY: Magit status, stage / unstage file, line
+- **Git menu** — zmax-vcs actions bridged into the PTY: Magit status, stage / unstage file, line
   blame, buffer-vs-HEAD diff, next/previous/reset hunk, stash / pop, and merge-conflict resolution
   (3-pane resolve, keep ours / theirs, next conflict).
 - **Window menu** — vim's `C-w` split-window family bridged into the PTY (each key backed by a real
@@ -232,7 +232,7 @@ the **Tabs** menu manages tabpages (each holds its own split layout).
   delete marks (`:mark`, `` `{x} `` goto, `:marks`, `:delmarks[!]`); jumplist back / forward
   (C-o / C-i), list / clear jumps (`:jumps`, `:clearjumps`), recent-files picker (`:oldfiles`); and
   registers show / set / clear / clear-all (`:registers`, `:set-register`, `:clear-register`).
-- **Bookmarks menu** — zemacs's persistent-bookmark family bridged into the PTY (distinct from the
+- **Bookmarks menu** — zmax's persistent-bookmark family bridged into the PTY (distinct from the
   transient marks above): JetBrains-style line bookmarks — toggle at point, next / previous, jump via a
   picker (`SPC r t/n/N/j`); focus the Bookmarks tool window (`SPC W b`); and the emacs bookmark file I/O
   — save / load the bookmark store to a path (`:bookmark-write` / `:bookmark-load`, via the Save-As
@@ -265,16 +265,16 @@ editor itself) cover switching without that risk.
 
 ## Bundled binaries (self-contained)
 
-The app **bundles** both the `zemacs` editor and the `stryke` runtime as Tauri `externalBin` sidecars —
+The app **bundles** both the `zmax` editor and the `stryke` runtime as Tauri `externalBin` sidecars —
 it never depends on either being on the user's `PATH`. Before each dev/build,
-`scripts/prepare-{zemacs,stryke}-sidecar.mjs` stage the binaries into
+`scripts/prepare-{zmax,stryke}-sidecar.mjs` stage the binaries into
 `app/src-tauri/binaries/<name>-<target-triple>` (the name `externalBin` requires); at runtime
 `sidecar.rs` resolves the sidecar beside the executable (or the dev staging dir) and the editor is
 launched by absolute path, with `STRYKE_BIN` exported to the bundled stryke. The staged binaries are
 gitignored build artifacts.
 
-- **zemacs** — vendored as the **`crates/zemacs` submodule** and built by the prep script
-  (`cargo build --bin zemacs`); override with `ZEMACS_SIDECAR_BIN`.
+- **zmax** — vendored as the **`crates/zemacs` submodule** and built by the prep script
+  (`cargo build --bin zmax`); override with `ZMAX_SIDECAR_BIN`.
 - **stryke** — pulled from the **latest [strykelang](https://github.com/MenkeTechnologies/strykelang)
   GitHub release** for the host triple (cached by release tag); falls back to a local stryke offline;
   override with `STRYKE_SIDECAR_BIN`.
@@ -282,7 +282,7 @@ gitignored build artifacts.
 ## Build
 
 ```sh
-git submodule update --init --recursive   # zgui-core, zpwr-embed-terminal, zpwr-file-browser, zpwr-i18n, zemacs
+git submodule update --init --recursive   # zgui-core, zpwr-embed-terminal, zpwr-file-browser, zpwr-i18n, zmax
 pnpm install
 pnpm tauri dev      # or: pnpm tauri build
 ```
@@ -294,7 +294,7 @@ release; both are cached afterward.
 
 Pushing a `v*` tag runs `.github/workflows/release.yml`, which builds the macOS app on Apple-silicon
 (`aarch64`) and Intel (`x86_64`) runners and attaches the per-arch `.dmg` + zipped `.app` to the
-GitHub release. The bundled zemacs (release build of the submodule) and stryke (latest release) sidecars
+GitHub release. The bundled zmax (release build of the submodule) and stryke (latest release) sidecars
 are staged automatically by `beforeBuildCommand`, so each `.app` is self-contained.
 
 ```sh
@@ -303,9 +303,9 @@ git tag v0.1.0 && git push --tags
 
 ## Links
 
-- **Core editor** — [`zemacs`](https://github.com/MenkeTechnologies/zemacs)
+- **Core editor** — [`zmax`](https://github.com/MenkeTechnologies/zmax)
 - **App store** — https://menketechnologies.github.io/app-store/
 
 ## License
 
-Free / OSS — MPL-2.0 (zemacs / Helix lineage). See [LICENSE](LICENSE).
+Free / OSS — MPL-2.0 (zmax / Helix lineage). See [LICENSE](LICENSE).

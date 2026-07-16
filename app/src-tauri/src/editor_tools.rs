@@ -761,7 +761,7 @@ mod tests {
     // ── tiny tempdir helpers (no external dev-dep) ──
     fn tempdir() -> PathBuf {
         let base = std::env::temp_dir().join(format!(
-            "zemacs-gui-et-test-{}-{}",
+            "zmax-gui-et-test-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)

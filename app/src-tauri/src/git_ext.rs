@@ -201,7 +201,7 @@ mod tests {
     #[test]
     fn branch_and_stash_roundtrip_in_temp_repo() {
         let dir = std::env::temp_dir().join(format!(
-            "zemacs-gui-gitext-{}-{}",
+            "zmax-gui-gitext-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)

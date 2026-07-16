@@ -12,7 +12,7 @@ use tauri::{AppHandle, Emitter, Manager};
 #[derive(Default)]
 pub struct OpenQueue(pub Mutex<Vec<String>>);
 
-/// Turn a `file://` / `mvim://` / `zemacs://` URL or a bare path into a filesystem path.
+/// Turn a `file://` / `mvim://` / `zmax://` URL or a bare path into a filesystem path.
 fn url_to_path(s: &str) -> Option<String> {
     let s = s.trim();
     if s.is_empty() {
@@ -24,7 +24,7 @@ fn url_to_path(s: &str) -> Option<String> {
         return Some(percent_decode(&path));
     }
     // TextMate-style mvim://open?url=file:///path&line=N — pull the url= argument.
-    for scheme in ["mvim://", "zemacs://"] {
+    for scheme in ["mvim://", "zmax://"] {
         if let Some(rest) = s.strip_prefix(scheme) {
             if let Some(q) = rest.split_once("url=") {
                 let enc = q.1.split('&').next().unwrap_or("");
@@ -126,7 +126,7 @@ mod tests {
     fn argv_keeps_only_existing_non_flag_files() {
         // /etc/hosts exists on macOS + Linux CI; the flag and the missing path are dropped.
         let argv = vec![
-            "zemacs-gui".to_string(),
+            "zmax-gui".to_string(),
             "-v".to_string(),
             "/etc/hosts".to_string(),
             "/no/such/file/zzz".to_string(),

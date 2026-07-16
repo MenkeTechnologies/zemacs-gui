@@ -1,6 +1,6 @@
-// zemacs-gui shell — mounts the ZGui.appShell baseline and runs the zemacs editor (Helix fork) in a
+// zmax-gui shell — mounts the ZGui.appShell baseline and runs the zmax editor (Helix fork) in a
 // fullscreen embedded terminal (shared zpwr-embed-terminal frontend). The PTY spawns the login shell;
-// we then `exec zemacs` so the editor replaces it and fills the window. See GUI_APP_ARCHITECTURE.md.
+// we then `exec zmax` so the editor replaces it and fills the window. See GUI_APP_ARCHITECTURE.md.
 (function () {
   "use strict";
   // Translate via the shared zpwr-i18n runtime (window.t), falling back to the English literal.
@@ -11,26 +11,26 @@
   function boot() {
     if (!window.ZGui || typeof ZGui.appShell !== "function") return;
     var shell = ZGui.appShell(document.getElementById("app"), {
-      brand: { glyph: "✎", title: "ZEMACS", subtitle: T("zemacs.shell.subtitle", "editor") },
-      filterPlaceholder: T("zemacs.shell.filter", "Filter…"),
+      brand: { glyph: "✎", title: "ZMAX", subtitle: T("zmax.shell.subtitle", "editor") },
+      filterPlaceholder: T("zmax.shell.filter", "Filter…"),
       palette: [
-        { label: T("zemacs.shell.restart_editor", "Restart editor"), run: restart },
-        { label: T("zemacs.shell.focus_editor", "Focus editor"), run: function () { var c = document.getElementById("terminalContainer"); if (c) { var ta = c.querySelector("textarea"); if (ta) ta.focus(); } } },
+        { label: T("zmax.shell.restart_editor", "Restart editor"), run: restart },
+        { label: T("zmax.shell.focus_editor", "Focus editor"), run: function () { var c = document.getElementById("terminalContainer"); if (c) { var ta = c.querySelector("textarea"); if (ta) ta.focus(); } } },
         // Embedded Stryke hooks editor (zpwr-hooks-editor) — opens the in-app #hooksOverlay defined
         // in index.html; window.openHooksEditor mounts the ZGui.hooks chooser + Monaco editor once.
-        { label: T("zemacs.shell.hooks_editor", "Hooks editor"), run: function () { if (typeof window.openHooksEditor === "function") window.openHooksEditor(); } },
+        { label: T("zmax.shell.hooks_editor", "Hooks editor"), run: function () { if (typeof window.openHooksEditor === "function") window.openHooksEditor(); } },
         // Tmux tiling (ZGui.tmux) — opens the overlay; C-b is the prefix (C-b c new window, %/" split).
-        { label: T("zemacs.shell.tmux", "Tmux"), run: function () { if (window.ZGui && ZGui.tmux && typeof ZGui.tmux.open === "function") ZGui.tmux.open(); } },
+        { label: T("zmax.shell.tmux", "Tmux"), run: function () { if (window.ZGui && ZGui.tmux && typeof ZGui.tmux.open === "function") ZGui.tmux.open(); } },
       ],
       // Extend the real Settings panel (⚙ / ⌘,) with the editor's language picker + toggles.
-      settingsExtra: function (b) { if (window.ZemacsMenu && typeof window.ZemacsMenu.settingsExtra === "function") window.ZemacsMenu.settingsExtra(b); },
+      settingsExtra: function (b) { if (window.ZmaxMenu && typeof window.ZmaxMenu.settingsExtra === "function") window.ZmaxMenu.settingsExtra(b); },
     });
 
     // A fullscreen terminal pane inside shell.body — provided so zpwr-embed-terminal uses it instead
     // of injecting its floating dock pane (its _ensureTerminalDom is a no-op when #terminalPane exists).
     var pane = document.createElement("div");
     pane.id = "terminalPane";
-    pane.className = "terminal-pane zemacs-fill active";
+    pane.className = "terminal-pane zmax-fill active";
     var container = document.createElement("div");
     container.id = "terminalContainer";
     container.className = "term-body";
@@ -38,11 +38,11 @@
     shell.body.appendChild(pane);
 
     // MacVim-style menu bar + Cmd-shortcuts + dialogs + drag-drop (all zgui widgets), bridged to the PTY
-    if (window.ZemacsMenu && typeof window.ZemacsMenu.mount === "function") window.ZemacsMenu.mount(shell);
+    if (window.ZmaxMenu && typeof window.ZmaxMenu.mount === "function") window.ZmaxMenu.mount(shell);
 
     // App-local project workbench: quick-open (⌘P), find-in-files (⇧⌘J), recent (⌘E), project files
     // (⇧⌘E) and a git panel — all in the ⌘K palette. Mounts after menu.js so its palette items append.
-    if (window.ZemacsPanels && typeof window.ZemacsPanels.mount === "function") window.ZemacsPanels.mount(shell);
+    if (window.ZmaxPanels && typeof window.ZmaxPanels.mount === "function") window.ZmaxPanels.mount(shell);
 
     // Install the automation-bus webview dispatcher (window.__zguiBridgeDispatch + emit forwarding) so
     // the native bus (bus.rs) can forward App::here()->verbs() into ZGui.automation — WITHOUT this the
@@ -52,7 +52,7 @@
     }
 
     // Exposed so the Preferences language picker can re-render the whole UI after switching locale.
-    window.zemacsRetranslate = function () { retranslate(shell); };
+    window.zmaxRetranslate = function () { retranslate(shell); };
 
     // show + spawn the PTY, then exec the editor over the shell once it's up
     if (typeof window.showTerminal === "function") window.showTerminal();
@@ -135,10 +135,10 @@
   }
 
   function retranslate(shell) {
-    if (window.ZemacsMenu && typeof window.ZemacsMenu.retranslate === "function") window.ZemacsMenu.retranslate();
-    if (shell && shell.filterInput) shell.filterInput.placeholder = T("zemacs.shell.filter", "Filter…");
+    if (window.ZmaxMenu && typeof window.ZmaxMenu.retranslate === "function") window.ZmaxMenu.retranslate();
+    if (shell && shell.filterInput) shell.filterInput.placeholder = T("zmax.shell.filter", "Filter…");
     var sub = document.querySelector(".zg-shell-sub");
-    if (sub) sub.textContent = T("zemacs.shell.subtitle", "editor");
+    if (sub) sub.textContent = T("zmax.shell.subtitle", "editor");
   }
 
   function tauri() { return window.__TAURI__ && window.__TAURI__.core; }
@@ -147,17 +147,17 @@
     if (!T) return; // in-browser preview: no PTY backend
     // give the login shell a moment to come up, then replace it with the BUNDLED editor (sidecar path,
     // with the sidecar dir prepended to PATH so the bundled stryke is reachable too) — never a bare
-    // `zemacs` off the user's PATH, so the shipped .app is self-contained.
+    // `zmax` off the user's PATH, so the shipped .app is self-contained.
     // `--ide` so the GUI boots straight into the workbench (toolbar + tool windows visible),
     // since the windowed app IS the IDE. (F2 still toggles it.)
     setTimeout(function () {
-      T.invoke("zemacs_exec_command").then(function (cmd) {
-        T.invoke("terminal_write", { data: "exec " + (cmd || "zemacs") + " --ide\n" }).catch(function () {});
+      T.invoke("zmax_exec_command").then(function (cmd) {
+        T.invoke("terminal_write", { data: "exec " + (cmd || "zmax") + " --ide\n" }).catch(function () {});
       }).catch(function () {
-        T.invoke("terminal_write", { data: "exec zemacs --ide\n" }).catch(function () {});
+        T.invoke("terminal_write", { data: "exec zmax --ide\n" }).catch(function () {});
       });
       // once the editor is up, sync its theme to the saved zgui-core colorscheme (unified palette)
-      setTimeout(function () { if (typeof window.zemacsSyncTheme === "function") window.zemacsSyncTheme(); }, 2500);
+      setTimeout(function () { if (typeof window.zmaxSyncTheme === "function") window.zmaxSyncTheme(); }, 2500);
     }, 800);
   }
   function restart() {

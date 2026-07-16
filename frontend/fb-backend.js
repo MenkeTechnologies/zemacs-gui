@@ -1,16 +1,16 @@
-// fb-backend.js — wires the shared zpwr-file-browser front end (file-browser.js) into zemacs-gui.
+// fb-backend.js — wires the shared zpwr-file-browser front end (file-browser.js) into zmax-gui.
 // Classic script, loaded BEFORE file-browser.js so the host globals it reads (window.zfbHost +
 // escapeHtml/showToast/prefs/fzfMatch/shortcutTip) exist on init.
 //
 // zfbHost maps each method file-browser.js calls to the matching Tauri command. The fs
 // method→command→arg lines are ported verbatim from the sibling apps (zemail/ztranslator), which took
-// them from Audio-Haxor frontend/js/ipc.js; only the fs_* commands zemacs-gui's src-tauri registers
-// (35 of them, from zpwr_file_browser::commands) are real. Because zemacs-gui IS an editor, "open a
-// file" routes into the zemacs buffer (window.zemacsOpenPath, panels.js) instead of the OS opener.
+// them from Audio-Haxor frontend/js/ipc.js; only the fs_* commands zmax-gui's src-tauri registers
+// (35 of them, from zpwr_file_browser::commands) are real. Because zmax-gui IS an editor, "open a
+// file" routes into the zmax buffer (window.zmaxOpenPath, panels.js) instead of the OS opener.
 (function () {
     'use strict';
     const invoke = (cmd, args) => window.__TAURI__.core.invoke(cmd, args);
-    const reject = (name) => Promise.reject(new Error(`${name}: not available in zemacs-gui`));
+    const reject = (name) => Promise.reject(new Error(`${name}: not available in zmax-gui`));
 
     window.zfbHost = {
         // ── Registered fs_* commands (verbatim arg mapping from the sibling apps) ──
@@ -51,10 +51,10 @@
         fsReadHead: (filePath, maxBytes) => invoke('fs_read_head', {filePath, maxBytes}),
         fsReadFileBytes: (filePath, maxBytes) => invoke('fs_read_file_bytes', {filePath, maxBytes}),
 
-        // ── "Open a file" in an editor host = load it into the zemacs buffer. Drive the editor via
-        //    panels.js's PTY bridge (window.zemacsOpenPath); fall back to the OS opener if unavailable. ──
+        // ── "Open a file" in an editor host = load it into the zmax buffer. Drive the editor via
+        //    panels.js's PTY bridge (window.zmaxOpenPath); fall back to the OS opener if unavailable. ──
         openFileDefault: (path) => {
-            if (typeof window.zemacsOpenPath === 'function') { window.zemacsOpenPath(path); return Promise.resolve(); }
+            if (typeof window.zmaxOpenPath === 'function') { window.zmaxOpenPath(path); return Promise.resolve(); }
             const op = window.__TAURI__ && window.__TAURI__.opener;
             if (op && typeof op.openPath === 'function') return op.openPath(path);
             return reject('openFileDefault');
@@ -65,7 +65,7 @@
         moveToTrash: (filePath) => invoke('move_to_trash', {filePath}),
         renameFile: (oldPath, newPath) => invoke('rename_file', {oldPath, newPath}),
 
-        // ── Home dir: zemacs-gui already registers `home_dir` (fs_ops.rs) for the Open dialog. ──
+        // ── Home dir: zmax-gui already registers `home_dir` (fs_ops.rs) for the Open dialog. ──
         getHomeDir: () => invoke('home_dir'),
 
         // ── Directory watcher (registered; the lib live-updates on file-browser-change) ──
@@ -142,7 +142,7 @@
         };
     }
 
-    // shortcutTip: zemacs-gui has no per-id tip lookup matching file-browser.js's contract; return {}
+    // shortcutTip: zmax-gui has no per-id tip lookup matching file-browser.js's contract; return {}
     // (file-browser.js treats {} as "no tip").
     if (typeof window.shortcutTip !== 'function') {
         window.shortcutTip = function shortcutTip() { return {}; };

@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Default capabilities for the zemacs-gui window. The embedded terminal + MacVim GUI commands are app-local Tauri commands; deep-link is needed for the mvim:// URL scheme.",
+  "description": "Default capabilities for the zmax-gui window. The embedded terminal + MacVim GUI commands are app-local Tauri commands; deep-link is needed for the mvim:// URL scheme.",
   "windows": [
     "main"
   ],

@@ -1,8 +1,8 @@
 {
-  "name": "zemacs-gui",
+  "name": "zmax-gui",
   "version": "0.2.11",
   "private": true,
-  "description": "zemacs-gui — desktop GUI wrapper around the zemacs editor (Helix fork). Runs the zemacs binary in an embedded PTY terminal with the shared zgui-core baseline.",
+  "description": "zmax-gui — desktop GUI wrapper around the zmax editor (Helix fork). Runs the zmax binary in an embedded PTY terminal with the shared zgui-core baseline.",
   "scripts": {
     "localinstall": "bash scripts/localinstall.sh",
     "dev": "pnpm install && node scripts/copy-embed-terminal.mjs && tauri dev",

@@ -280,7 +280,7 @@ abcdef1234567890abcdef1234567890abcdef12 2 2
 
     #[test]
     fn diff_files_reports_difference() {
-        let dir = std::env::temp_dir().join(format!("zemacs-gui-diff-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("zmax-gui-diff-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let a = dir.join("a.txt");
         let b = dir.join("b.txt");

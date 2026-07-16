@@ -1,7 +1,7 @@
 name: Release
 
 # Tag a version (e.g. `git tag v0.1.0 && git push --tags`) to build the macOS .app/.dmg and attach it
-# to the GitHub release. Both the zemacs editor (crates/zemacs submodule) and the stryke runtime
+# to the GitHub release. Both the zmax editor (crates/zemacs submodule) and the stryke runtime
 # (latest strykelang release) are bundled as Tauri externalBin sidecars by the prep scripts that run in
 # tauri's beforeBuildCommand, so the shipped .app is self-contained.
 
@@ -42,7 +42,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-          # PAT with read access to the private submodule repos (zemacs-gui-core,
+          # PAT with read access to the private submodule repos (zmax-gui-core,
           # zpwr-embed-terminal, …); the default GITHUB_TOKEN can't clone them.
           token: ${{ secrets.SUBMODULES_PAT }}
 
@@ -71,15 +71,15 @@ jobs:
 
       # Build the editor in release so the staged sidecar is a release binary (the prep script prefers
       # target/release and won't rebuild). Native target = the runner arch, matching the app bundle.
-      - name: Build zemacs editor (release)
+      - name: Build zmax editor (release)
         working-directory: crates/zemacs
-        run: cargo build --release --locked --bin zemacs
+        run: cargo build --release --locked --bin zmax
 
       - name: Install JS deps
         run: pnpm install --frozen-lockfile
 
       # tauri build runs beforeBuildCommand: copy-embed-terminal + prepare-stryke-sidecar (downloads
-      # the strykelang release for this arch) + prepare-zemacs-sidecar (stages the release editor).
+      # the strykelang release for this arch) + prepare-zmax-sidecar (stages the release editor).
       - name: Build the app bundle
         run: pnpm tauri build
 
@@ -94,7 +94,7 @@ jobs:
           if [ -z "$DMG" ] || [ -z "$APP" ]; then
             echo "::error::bundle not found"; find app/src-tauri/target -path '*/bundle/*' -maxdepth 8 | head -50; exit 1
           fi
-          OUT="$RUNNER_TEMP/zemacs-gui-${TAG}-${{ matrix.arch }}"
+          OUT="$RUNNER_TEMP/zmax-gui-${TAG}-${{ matrix.arch }}"
           cp "$DMG" "${OUT}.dmg"
           ditto -c -k --keepParent "$APP" "${OUT}.app.zip"
           gh release upload "$TAG" "${OUT}.dmg" "${OUT}.app.zip" --clobber

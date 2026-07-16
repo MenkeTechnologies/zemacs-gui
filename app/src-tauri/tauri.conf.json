@@ -1,19 +1,19 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "zemacs-gui",
+  "productName": "zmax-gui",
   "version": "0.2.11",
-  "identifier": "com.menketechnologies.zemacs-gui",
+  "identifier": "com.menketechnologies.zmax-gui",
   "build": {
     "frontendDist": "../../frontend",
-    "beforeDevCommand": "node scripts/copy-zgui-core.mjs && node scripts/copy-webui.mjs && node scripts/copy-embed-terminal.mjs && node scripts/copy-i18n.mjs && node scripts/copy-file-browser.mjs && node scripts/copy-hooks-editor.mjs && node scripts/prepare-stryke-sidecar.mjs && node scripts/prepare-zemacs-sidecar.mjs",
-    "beforeBuildCommand": "node scripts/copy-zgui-core.mjs && node scripts/copy-webui.mjs && node scripts/copy-embed-terminal.mjs && node scripts/copy-i18n.mjs && node scripts/copy-file-browser.mjs && node scripts/copy-hooks-editor.mjs && node scripts/prepare-stryke-sidecar.mjs && node scripts/prepare-zemacs-sidecar.mjs"
+    "beforeDevCommand": "node scripts/copy-zgui-core.mjs && node scripts/copy-webui.mjs && node scripts/copy-embed-terminal.mjs && node scripts/copy-i18n.mjs && node scripts/copy-file-browser.mjs && node scripts/copy-hooks-editor.mjs && node scripts/prepare-stryke-sidecar.mjs && node scripts/prepare-zmax-sidecar.mjs",
+    "beforeBuildCommand": "node scripts/copy-zgui-core.mjs && node scripts/copy-webui.mjs && node scripts/copy-embed-terminal.mjs && node scripts/copy-i18n.mjs && node scripts/copy-file-browser.mjs && node scripts/copy-hooks-editor.mjs && node scripts/prepare-stryke-sidecar.mjs && node scripts/prepare-zmax-sidecar.mjs"
   },
   "app": {
     "withGlobalTauri": true,
     "windows": [
       {
         "label": "main",
-        "title": "zemacs",
+        "title": "zmax",
         "width": 1200,
         "height": 800,
         "minWidth": 800,
@@ -32,7 +32,7 @@
       "desktop": {
         "schemes": [
           "mvim",
-          "zemacs"
+          "zmax"
         ]
       }
     }
@@ -49,7 +49,7 @@
     ],
     "externalBin": [
       "binaries/stryke",
-      "binaries/zemacs"
+      "binaries/zmax"
     ],
     "fileAssociations": [
       {

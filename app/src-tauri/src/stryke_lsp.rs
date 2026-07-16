@@ -152,13 +152,13 @@ pub async fn run_stryke_hook(
     let ctx_json = serde_json::to_string(&ctx).unwrap_or_else(|_| "{}".to_string());
     tauri::async_runtime::spawn_blocking(move || -> Result<serde_json::Value, String> {
         let mut path = std::env::temp_dir();
-        path.push(format!("zemacs-gui-hook-{}.stk", std::process::id()));
+        path.push(format!("zmax-gui-hook-{}.stk", std::process::id()));
         std::fs::write(&path, &script).map_err(|e| format!("write temp hook: {e}"))?;
         let mut child = Command::new(resolve_stryke())
             .arg("run")
             .arg(&path)
             // Bus identity: lets `App::here()` in the hook resolve to this app's socket.
-            .env("ZGUI_APP", "zemacs-gui")
+            .env("ZGUI_APP", "zmax-gui")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
