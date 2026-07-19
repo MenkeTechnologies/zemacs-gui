@@ -3,6 +3,7 @@
 // MacVim-style GUI helpers (fs/window/open-intake), and wires the PTY's output/exit to the webview.
 
 mod bus;
+mod doc_search;
 mod edit_ops;
 mod editor_tools;
 mod encoding_ops;
@@ -120,6 +121,7 @@ pub fn run() {
             // file stats, git.
             project::find_files,
             project::search_project,
+            doc_search::search_documents,
             project::create_path,
             project::rename_path,
             project::delete_path,
@@ -137,6 +139,7 @@ pub fn run() {
             editor_tools::bookmark_remove,
             editor_tools::bookmark_clear,
             editor_tools::replace_project,
+            doc_search::replace_documents,
             editor_tools::project_symbols,
             editor_tools::scan_markers,
             // Git tools (panels.js): per-line blame, per-file history + show-commit, stage / unstage /

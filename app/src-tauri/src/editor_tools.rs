@@ -135,7 +135,7 @@ pub struct ReplaceHit {
     pub after: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Default)]
 pub struct ReplaceResult {
     pub hits: Vec<ReplaceHit>,
     /// Total number of individual matches across the project (not just previewed lines).
@@ -146,6 +146,21 @@ pub struct ReplaceResult {
     pub applied: bool,
     /// True when `max_results` cut the preview list short (the totals are still complete).
     pub truncated: bool,
+    /// Per-document replace rows (docx/odt/xlsx/ods/pptx/odp/pdf). Reported separately from
+    /// `hits` because the engines return an occurrence *count* per package, not per-line
+    /// before/after text — there is no line to show. `total`/`files` above stay line-only so
+    /// existing consumers keep their meaning.
+    pub doc_hits: Vec<crate::doc_search::DocReplaceHit>,
+    /// Total occurrences replaced across documents.
+    pub doc_total: usize,
+    /// Number of documents containing at least one match.
+    pub doc_files: usize,
+    /// `(path, engine error)` for documents that failed to parse or rewrite.
+    pub doc_errors: Vec<(String, String)>,
+    /// Set when document replace semantics are narrower than the search that found the hits
+    /// (case-insensitive search vs case-sensitive package rewrite), so the UI can explain a
+    /// lower-than-expected document count rather than looking broken.
+    pub doc_case_note: Option<String>,
 }
 
 /// Compile the search regex the same way `search_project` does: literal unless `regex`, wrapped in
@@ -201,8 +216,13 @@ fn replace_in_content(
 }
 
 /// Preview (or, with `opts.apply`, perform) a project-wide search & replace. The preview list is
-/// capped at `max_results` lines but `total`/`files` always reflect the whole project. Binary and
-/// oversized files are skipped, just like the search.
+/// capped at `max_results` lines but `total`/`files` always reflect the whole project. Oversized
+/// files and binaries with no document engine behind them are skipped, just like the search.
+///
+/// Supported office and PDF documents are *not* skipped: they are routed to
+/// [`crate::doc_search`] and reported in `doc_hits` / `doc_total` / `doc_files`. Documents are
+/// rewritten through the engines' lossless package rewrite (temp file plus atomic rename), never
+/// as lines of text, and the document branch is literal-only — `regex` and `whole_word` skip it.
 #[tauri::command]
 pub fn replace_project(
     root: String,
@@ -211,13 +231,7 @@ pub fn replace_project(
     opts: Option<ReplaceOpts>,
 ) -> Result<ReplaceResult, String> {
     if query.is_empty() {
-        return Ok(ReplaceResult {
-            hits: Vec::new(),
-            total: 0,
-            files: 0,
-            applied: false,
-            truncated: false,
-        });
+        return Ok(ReplaceResult::default());
     }
     let opts = opts.unwrap_or_default();
     let apply = opts.apply.unwrap_or(false);
@@ -233,6 +247,11 @@ pub fn replace_project(
     let mut truncated = false;
 
     for path in walk_files(&root, opts.show_hidden.unwrap_or(false)) {
+        // Supported documents are handled by the deferred document pass below, which applies its
+        // own (larger) size cap and rewrites packages losslessly rather than as lines of text.
+        if crate::doc_search::classify(&path, &[]) != crate::doc_search::FileKind::Text {
+            continue;
+        }
         if fs::metadata(&path)
             .map(|m| m.len() > MAX_GREP_FILE_BYTES)
             .unwrap_or(true)
@@ -280,12 +299,35 @@ pub fn replace_project(
         }
     }
 
+    // Document pass. Literal-only, so it is skipped for the matching modes the engines cannot
+    // express (`regex`, `whole_word`) exactly as `search_project` skips them — replacing
+    // approximately in a user's .docx is far worse than not replacing at all.
+    let mut doc = crate::doc_search::DocReplaceResult::default();
+    if !opts.regex.unwrap_or(false) && !opts.whole_word.unwrap_or(false) {
+        let doc_opts = crate::doc_search::DocSearchOpts {
+            show_hidden: opts.show_hidden,
+            max_results: opts.max_results,
+            formats: None,
+            case_insensitive: opts.case_insensitive,
+            regex: None,
+        };
+        match crate::doc_search::replace_all(&root, &query, &replacement, apply, &doc_opts) {
+            Ok(r) => doc = r,
+            Err(e) => doc.errors.push((root.to_string_lossy().into_owned(), e)),
+        }
+    }
+
     Ok(ReplaceResult {
         hits,
         total,
         files,
         applied: apply,
         truncated,
+        doc_total: doc.total,
+        doc_files: doc.files,
+        doc_hits: doc.hits,
+        doc_errors: doc.errors,
+        doc_case_note: doc.case_note,
     })
 }
 

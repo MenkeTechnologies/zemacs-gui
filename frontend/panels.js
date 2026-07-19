@@ -44,6 +44,61 @@
     focusEditor: function () { var c = document.getElementById("terminalContainer"); if (c) { var ta = c.querySelector("textarea"); if (ta) ta.focus(); } },
   };
 
+  // ── binary-document hits (docx/odt/xlsx/ods/pptx/odp/pdf) ──────────────────────────────────────
+  // The Rust side (doc_search.rs) parses these in-process and returns hits alongside the source
+  // hits. They need their own row treatment for two reasons: a paragraph index / cell ref / slide
+  // number is not a line:col, and `:open` cannot render a zip package in the PTY editor.
+
+  // Human label for a DocLocator. The enum is internally tagged (`kind`), so switching on `kind`
+  // is enough — no probing for the presence of fields.
+  function locatorLabel(loc) {
+    if (!loc) return "";
+    switch (loc.kind) {
+      case "paragraph": return "¶" + (loc.index + 1);
+      case "cell": return (loc.sheet_name || ("sheet " + (loc.sheet + 1))) + "!" + loc.reference;
+      case "slide": return T("zmax.panel.slide", "slide") + " " + (loc.index + 1);
+      case "page": return "p. " + loc.page;
+      default: return "";
+    }
+  }
+
+  // Activate a document hit. `:open` is not an option — the editor is a text buffer and these are
+  // packages — so the document is handed to the OS default application and the in-document
+  // locator goes to the clipboard, which is the part the external app cannot be told about.
+  // A row is never left inert.
+  function openDocument(h) {
+    if (!h || !h.path) return;
+    var where = locatorLabel(h.locator);
+    var op = window.__TAURI__ && window.__TAURI__.opener;
+    if (op && typeof op.openPath === "function") {
+      op.openPath(h.path).catch(function (err) { toast(String(err), "error"); });
+    } else {
+      toast(T("zmax.panel.no_opener", "No handler for this document"), "error");
+      return;
+    }
+    if (where) {
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(where);
+      } catch (e) { /* clipboard denied — the toast below still says where the hit is */ }
+    }
+    invoke("recent_add", { path: h.path }).catch(function () {});
+    toast(T("zmax.panel.opened_doc", "Opened") + " " + h.rel + (where ? " · " + where : ""));
+  }
+
+  // Picker rows for the `doc_hits` half of a search result. Bookmarks are deliberately absent:
+  // `bookmark_add` takes `{path, line}` and a paragraph index is not a line, so offering the ★
+  // would file a bookmark that jumps to the wrong place.
+  function docRows(res) {
+    return ((res && res.doc_hits) || []).map(function (h) {
+      return {
+        badge: h.format,
+        primary: h.text || "(match)",
+        secondary: h.rel + " · " + locatorLabel(h.locator),
+        onPick: function () { openDocument(h); },
+      };
+    });
+  }
+
   // The project root = the PTY's working directory (list_dir with no path canonicalises the process
   // cwd, which the shell/editor share). Cached after the first lookup.
   var rootCache = null;
@@ -226,7 +281,7 @@
               max_results: 2000,
             },
           }).then(function (res) {
-            return res.hits.map(function (h) {
+            var srcRows = res.hits.map(function (h) {
               return {
                 primary: h.text || "(match)",
                 secondary: h.rel + ":" + h.line,
@@ -241,6 +296,19 @@
                 },
               };
             });
+            // One query, one ranked list: `.docx` / `.xlsx` / `.pptx` / ODF / `.pdf` hits land in
+            // the same result list as the source hits, after them so the familiar rows stay put.
+            // A document parse failure is surfaced as a row rather than dropped, otherwise a
+            // corrupt package is indistinguishable from "no matches".
+            var errRows = ((res.doc_errors) || []).map(function (pair) {
+              return {
+                badge: "!",
+                primary: String(pair[1]),
+                secondary: String(pair[0]),
+                onPick: function () { toast(String(pair[1]), "error"); },
+              };
+            });
+            return srcRows.concat(docRows(res), errRows);
           });
         },
       });
@@ -778,7 +846,59 @@
           row.addEventListener("click", function () { openInEditor(h.path, h.line, h.col); });
           list.appendChild(row);
         });
+        // Document rows. There is no before/after text to show: the engines rewrite the package
+        // and return an occurrence *count*, not per-line text, so the row states what will change
+        // rather than pretending to a diff it cannot produce.
+        (res.doc_hits || []).forEach(function (h) {
+          var row = document.createElement("div");
+          row.className = "zp-row zp-rep-row zp-doc-row";
+          var loc = document.createElement("div");
+          loc.className = "zp-rep-loc";
+          loc.textContent = h.rel + " · " + h.format;
+          var n = document.createElement("div");
+          n.className = "zp-doc-count";
+          if (h.replaced > 0) {
+            n.textContent = h.replaced + " " + (h.whole_run_only
+              ? T("zmax.panel.pages_changed", "pages changed")
+              : T("zmax.panel.replacements", "replacements"));
+          } else {
+            // Found by search, not replaceable by the engine — the PDF whole-run asymmetry.
+            // Saying so here is the difference between an understood limitation and a bug report.
+            n.className = "zp-doc-count zp-doc-skipped";
+            n.textContent = T("zmax.panel.pdf_whole_run",
+              "matched, but not replaceable: pdf replace matches whole text runs, not substrings");
+          }
+          row.appendChild(loc);
+          row.appendChild(n);
+          row.addEventListener("click", function () { openDocument(h); });
+          list.appendChild(row);
+        });
+        (res.doc_errors || []).forEach(function (pair) {
+          var row = document.createElement("div");
+          row.className = "zp-row zp-rep-row zp-doc-row";
+          var loc = document.createElement("div");
+          loc.className = "zp-rep-loc";
+          loc.textContent = String(pair[0]);
+          var msg = document.createElement("div");
+          msg.className = "zp-doc-count zp-doc-error";
+          msg.textContent = String(pair[1]);
+          row.appendChild(loc);
+          row.appendChild(msg);
+          list.appendChild(row);
+        });
+        if (res.doc_case_note) {
+          var note = document.createElement("div");
+          note.className = "zp-doc-note";
+          note.textContent = res.doc_case_note;
+          list.appendChild(note);
+        }
+        // Line counts and document counts are reported separately because they measure different
+        // things — `total` counts matched lines, `doc_total` counts occurrences inside packages.
         var summary = res.files + " " + T("zmax.panel.files", "files") + " · " + res.total + " " + T("zmax.panel.matches", "matches");
+        if (res.doc_files) {
+          summary += " · " + res.doc_files + " " + T("zmax.panel.documents", "documents") +
+            " · " + res.doc_total + " " + T("zmax.panel.matches", "matches");
+        }
         if (res.truncated) summary += " · " + T("zmax.panel.preview_capped", "preview capped");
         count.textContent = summary;
       }
@@ -794,16 +914,30 @@
 
       function applyAll() {
         var query = find.value;
-        if (!query || !lastResult || !lastResult.total) { toast(T("zmax.panel.nothing_to_replace", "Nothing to replace")); return; }
+        // A document-only result is still work to do, so the guard counts both halves.
+        if (!query || !lastResult || (!lastResult.total && !lastResult.doc_total)) { toast(T("zmax.panel.nothing_to_replace", "Nothing to replace")); return; }
+        // Documents are named separately in the confirm: they are rewritten in place as whole
+        // packages, which is a materially different action from editing lines of text, and the
+        // user is about to authorise it.
+        var msg = T("zmax.panel.replace_confirm", "Rewrite") + " " + lastResult.total + " " +
+          T("zmax.panel.matches", "matches") + " " + T("zmax.panel.in", "in") + " " + lastResult.files + " " +
+          T("zmax.panel.files", "files");
+        if (lastResult.doc_total) {
+          msg += "\n" + T("zmax.panel.replace_confirm_docs", "and rewrite") + " " + lastResult.doc_total + " " +
+            T("zmax.panel.matches", "matches") + " " + T("zmax.panel.in", "in") + " " + lastResult.doc_files + " " +
+            T("zmax.panel.documents", "documents");
+        }
         ZGui.modal.confirm({
           title: T("zmax.panel.replace_all", "Replace All"),
-          message: T("zmax.panel.replace_confirm", "Rewrite") + " " + lastResult.total + " " +
-            T("zmax.panel.matches", "matches") + " " + T("zmax.panel.in", "in") + " " + lastResult.files + " " +
-            T("zmax.panel.files", "files") + "?",
+          message: msg + "?",
         }).then(function (ok) {
           if (!ok) return;
           invoke("replace_project", { root: root, query: query, replacement: repl.value, opts: opts(true) }).then(function (res) {
-            toast(T("zmax.panel.replaced", "Replaced") + " " + res.total + " " + T("zmax.panel.in", "in") + " " + res.files + " " + T("zmax.panel.files", "files"));
+            var done = T("zmax.panel.replaced", "Replaced") + " " + res.total + " " + T("zmax.panel.in", "in") + " " + res.files + " " + T("zmax.panel.files", "files");
+            if (res.doc_total) {
+              done += " · " + res.doc_total + " " + T("zmax.panel.in", "in") + " " + res.doc_files + " " + T("zmax.panel.documents", "documents");
+            }
+            toast(done);
             dlg.close();
             act.focusEditor();
           }, function (err) { toast(String(err), "error"); });

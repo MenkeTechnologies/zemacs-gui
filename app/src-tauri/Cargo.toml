@@ -44,6 +44,25 @@ zpwr-file-browser = { path = "../../crates/zpwr-file-browser/crate", features = 
 # (no native-messaging worker). Backs the sys_stats command; mirrors zphoto/zoffice.
 zwire-host = { path = "../../crates/zwire-host", default-features = false, features = ["sysinfo-caps"] }
 sysinfo = "0.33"   # match zwire-host's sysinfo so the System/Networks/Disks types line up
+# Binary-document-transparent project search/replace: the office engine (docx/odt/xlsx/ods/pptx/odp)
+# and the PDF engine link as rlibs into this same host, so the walker parses documents in-process —
+# no subprocess spawn, no IPC. `zpdf-core`'s `tauri` feature stays off: this uses the engine API
+# directly, not the plugin.
+zoffice-core = { path = "../../crates/zoffice-core" }
+zpdf-core = { path = "../../crates/zpdf-core", default-features = false }
+# Document parsing is orders of magnitude costlier per file than a line grep, so the document branch
+# of the walk fans out across a thread pool. The text branch stays single-threaded and unchanged.
+rayon = "1"
+
+[dev-dependencies]
+# Test-only. The lossless-replace test has to prove that every zip entry *other than* the edited
+# XML part survives byte-for-byte, which means reading the package independently of the engine
+# that wrote it. Version matched to zoffice-core's own zip so the two agree on the container.
+zip = { version = "8", default-features = false, features = ["deflate"] }
+# Test-only: build a one-page PDF whose content stream draws a known text run, so the
+# search-vs-replace asymmetry can be pinned without checking a binary fixture into the repo.
+# Version matched to zpdf-core's lopdf.
+lopdf = "0.44"
 
 # MacVim transparency + blurradius analog (translucent blurred window material).
 [target.'cfg(target_os = "macos")'.dependencies]

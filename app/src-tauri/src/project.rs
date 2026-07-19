@@ -35,6 +35,10 @@ const PRUNED_DIRS: &[&str] = &[
 const MAX_WALK_FILES: usize = 200_000;
 /// Files larger than this are skipped by every content scan (grep, replace, symbols, markers).
 pub(crate) const MAX_GREP_FILE_BYTES: u64 = 4 * 1024 * 1024;
+/// Documents get their own, much larger cap. The 4 MiB grep cap is tuned for source files; a
+/// 12 MiB `.pptx` or a 6 MiB `.xlsx` is entirely ordinary, and reusing the grep cap would make
+/// the document branch silently do nothing on most real-world office files.
+pub(crate) const MAX_DOC_FILE_BYTES: u64 = 64 * 1024 * 1024;
 const BINARY_SNIFF_BYTES: usize = 8192;
 
 fn is_pruned_dir(name: &str) -> bool {
@@ -199,11 +203,18 @@ pub struct SearchHit {
     pub text: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Default)]
 pub struct SearchResult {
     pub hits: Vec<SearchHit>,
     /// True when `max_results` cut the search short — the UI shows a "more…" hint.
     pub truncated: bool,
+    /// Hits from binary documents (docx/odt/xlsx/ods/pptx/odp/pdf), parsed in-process by the
+    /// linked engines. Empty when the tree holds no supported documents. Additive: consumers
+    /// that only read `hits` are unaffected.
+    pub doc_hits: Vec<crate::doc_search::DocHit>,
+    /// `(path, engine error)` for documents that failed to parse. Reported rather than dropped,
+    /// so a corrupt package is visible instead of looking like "no matches".
+    pub doc_errors: Vec<(String, String)>,
 }
 
 pub(crate) fn looks_binary(bytes: &[u8]) -> bool {
@@ -212,8 +223,15 @@ pub(crate) fn looks_binary(bytes: &[u8]) -> bool {
 
 /// Project-wide line search. `query` is a literal substring unless `opts.regex` is set, in which case
 /// it is a full regular expression. `whole_word` wraps it in word boundaries; `case_insensitive`
-/// folds case. Binary and oversized files are skipped. Results carry `path:line:col` so a click opens
-/// the editor exactly on the match.
+/// folds case. Oversized files and binaries with no document engine behind them are skipped.
+/// Results carry `path:line:col` so a click opens the editor exactly on the match.
+///
+/// Binary *documents* are not skipped: a file whose extension names a supported office or PDF
+/// format is routed to [`crate::doc_search`], parsed in-process, and its hits returned in
+/// `doc_hits` alongside the source hits in `hits`. That branch is literal-only — when
+/// `opts.regex` is set the document pass is skipped, because the engines match substrings
+/// rather than regular expressions (the standalone `search_documents` command rejects a regex
+/// query outright rather than degrading it).
 #[tauri::command]
 pub fn search_project(
     root: String,
@@ -221,10 +239,7 @@ pub fn search_project(
     opts: Option<SearchOpts>,
 ) -> Result<SearchResult, String> {
     if query.is_empty() {
-        return Ok(SearchResult {
-            hits: Vec::new(),
-            truncated: false,
-        });
+        return Ok(SearchResult::default());
     }
     let opts = opts.unwrap_or_default();
     let root = PathBuf::from(&root);
@@ -247,6 +262,13 @@ pub fn search_project(
     let mut hits = Vec::new();
     let mut truncated = false;
     'files: for path in walk_files(&root, opts.show_hidden.unwrap_or(false)) {
+        // Classify by extension before reading anything: a supported document is handled by the
+        // deferred document pass below, and must not be size-capped or NUL-sniffed out here.
+        // `collect_documents` re-walks and applies the document cap, so this loop just steps over
+        // them rather than duplicating that logic.
+        if crate::doc_search::classify(&path, &[]) != crate::doc_search::FileKind::Text {
+            continue;
+        }
         if fs::metadata(&path)
             .map(|m| m.len() > MAX_GREP_FILE_BYTES)
             .unwrap_or(true)
@@ -257,6 +279,7 @@ pub fn search_project(
             Ok(b) => b,
             Err(_) => continue,
         };
+        // Extension said "text", but the bytes disagree — an extensionless binary, a `.dat`, etc.
         if looks_binary(&bytes) {
             continue;
         }
@@ -287,7 +310,41 @@ pub fn search_project(
             }
         }
     }
-    Ok(SearchResult { hits, truncated })
+    // Document pass, after the text pass so ordering stays deterministic and the existing
+    // `truncated` semantics are preserved.
+    //
+    // Skipped when the text pass already hit the result cap, and when the query uses a matching
+    // mode the engines cannot express: `regex` and `whole_word` both have no substring
+    // equivalent, and honouring them approximately would return hits the user did not ask for.
+    let mut doc_hits = Vec::new();
+    let mut doc_errors = Vec::new();
+    let doc_capable = !opts.regex.unwrap_or(false) && !opts.whole_word.unwrap_or(false);
+    if doc_capable && !truncated {
+        let doc_opts = crate::doc_search::DocSearchOpts {
+            show_hidden: opts.show_hidden,
+            max_results: Some(max.saturating_sub(hits.len())),
+            formats: None,
+            case_insensitive: opts.case_insensitive,
+            regex: None,
+        };
+        match crate::doc_search::search_all(&root, &query, &doc_opts) {
+            Ok(res) => {
+                doc_hits = res.hits;
+                doc_errors = res.errors;
+                truncated = truncated || res.truncated;
+            }
+            // A document-pass failure must never fail the whole search: the source hits the
+            // user asked for are already in hand.
+            Err(e) => doc_errors.push((root.to_string_lossy().into_owned(), e)),
+        }
+    }
+
+    Ok(SearchResult {
+        hits,
+        truncated,
+        doc_hits,
+        doc_errors,
+    })
 }
 
 // ── project tree file operations (new / rename / delete / copy) ─────────────────────────────────

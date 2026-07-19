@@ -2,10 +2,16 @@
 //! `zgui-bridge` Unix socket so a stryke script can drive the whole app by name —
 //! `App::open("zmax-gui")->call(...)`, or `App::here()` from a hook running inside the app.
 //!
-//! zmax-gui has no `-core` engine of its own, so EVERY verb/state/`verbs()` query is forwarded to
-//! the webview's `ZGui.automation` surface (the appShell actions + the zmax menu flattened into ⌘K)
-//! via the automation-host.js dispatcher, which runs the registered verb and reports back through
-//! `zgui_bridge_reply`. So the entire appShell surface — not an engine — is what a script sees.
+//! EVERY verb/state/`verbs()` query is forwarded to the webview's `ZGui.automation` surface (the
+//! appShell actions + the zmax menu flattened into ⌘K) via the automation-host.js dispatcher, which
+//! runs the registered verb and reports back through `zgui_bridge_reply`. So the entire appShell
+//! surface is what a script sees.
+//!
+//! Note that "zmax-gui hosts no engine" is no longer true of the binary either: `zoffice-core` and
+//! `zpdf-core` link in as rlibs to back the document search/replace commands in `doc_search`. They
+//! are deliberately *not* exposed as host-side bus verbs — the bus contract stays "one surface, the
+//! webview's" so a script sees a single verb namespace rather than two that can drift. Registering
+//! host-side verbs for the document commands is a live option; it just has not been taken.
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};

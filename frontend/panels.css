@@ -116,6 +116,18 @@
 .zp-rep-before { font-size: 12px; color: var(--accent, #ff2a6d); font-family: monospace; white-space: pre-wrap; word-break: break-all; }
 .zp-rep-after { font-size: 12px; color: var(--green, #39ff14); font-family: monospace; white-space: pre-wrap; word-break: break-all; }
 
+/* Document (docx/odt/xlsx/ods/pptx/odp/pdf) replace rows. These carry a count rather than
+   before/after text: the engines rewrite the package losslessly and report occurrences, so there
+   is no line to diff. Plain colour + border only — no shadows, gradients or pseudo-elements,
+   which corrupt child rendering inside release WebKit. */
+.zp-doc-row { border-left: 2px solid var(--cyan, #00e5ff); padding-left: 6px; }
+.zp-doc-count { font-size: 12px; color: var(--cyan, #00e5ff); font-family: monospace; }
+/* Matched by search but outside what the engine can rewrite (pdf whole-run replace). */
+.zp-doc-skipped { color: var(--yellow, #f9e900); white-space: pre-wrap; }
+.zp-doc-error { color: var(--accent, #ff2a6d); white-space: pre-wrap; word-break: break-all; }
+/* Why a document count can come in under the search count (case-sensitivity of package rewrite). */
+.zp-doc-note { font-size: 11px; color: var(--yellow, #f9e900); padding: 6px 4px; white-space: pre-wrap; }
+
 /* destructive action button (git discard / stash drop) — plain colour swap, no shadows/transitions */
 .zp-danger { color: var(--accent, #ff2a6d); border-color: var(--accent, #ff2a6d); }
 

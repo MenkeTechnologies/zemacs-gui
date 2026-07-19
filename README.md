@@ -28,6 +28,10 @@ window, wrapped in the shared **zgui-core** app baseline (`ZGui.appShell`: comma
 schemes, settings, CRT/splash). The editor is the same modal core; the window, chrome and theming are
 the GUI. Standard MenkeTechnologies GUI layout — see `GUI_APP_ARCHITECTURE.md` in the meta repo.
 
+The host is thin with one deliberate exception: the **office** and **PDF** engines link into it as
+rlibs so that project search and replace can see inside binary documents in-process. See
+[Documents are searchable](#documents-are-searchable).
+
 ```
 zmax-gui/
 ├─ app/src-tauri/        Tauri host: terminal + fs + window + open-intake + project commands
@@ -37,6 +41,7 @@ zmax-gui/
 │   ├─ project.rs        fuzzy find-files, find-in-files (regex), tree file ops, recent files,
 │   │                    file stats, git status/branch/diff — the project workbench backend
 │   ├─ editor_tools.rs   bookmarks, project search & replace, go-to-symbol, TODO/markers
+│   ├─ doc_search.rs     binary-document search & lossless replace (docx/odt/xlsx/ods/pptx/odp/pdf)
 │   ├─ git_tools.rs      git blame, per-file history + show-commit, stage/unstage/discard, file compare
 │   ├─ git_ext.rs        git branches (list/checkout/create) + stash (save/list/pop/drop/show)
 │   ├─ text_tools.rs     file cleanup/convert, sort lines, find-definition, batch rename
@@ -49,7 +54,9 @@ zmax-gui/
 │   ├─ zmax            the editor — vendored submodule, built → bundled sidecar
 │   ├─ zpwr-embed-terminal   shared PTY engine (submodule)
 │   ├─ zpwr-file-browser     shared multi-pane file browser: `crate/` (fs_* commands, watcher) + webui
-│   └─ zpwr-i18n             shared 27-locale i18n runtime + catalogs (submodule)
+│   ├─ zpwr-i18n             shared 27-locale i18n runtime + catalogs (submodule)
+│   ├─ zoffice-core          office engine (docx/odt/xlsx/ods/pptx/odp), linked as an rlib
+│   └─ zpdf-core             PDF engine, linked as an rlib
 ├─ scripts/
 │   ├─ mvim              terminal launcher (open files in the running window)
 │   ├─ copy-{webui,embed-terminal,i18n,file-browser}.mjs   sync shared webui into frontend/
@@ -75,10 +82,13 @@ results are fast and the editor stays the single source of truth.
   and run-aware ranking; type to filter, `↑`/`↓`/`Enter` to open.
 - **Find in Files** (`⇧⌘J`) — project-wide text search with **regex**, **match-case** and
   **whole-word** toggles; click a match to jump to its exact `line:col`, or **★** to bookmark it.
+  **Binary documents are searched too**, in the same query and the same ranked list — see
+  [Documents are searchable](#documents-are-searchable) below.
 - **Search & Replace** (`⇧⌘H`) — project-wide replace with **regex** (including `$1` capture
   references), match-case and whole-word; a live **preview** of every before → after line, then
-  **Replace All** rewrites the matching files on disk (confirmed first). Binary/oversized files are
-  skipped, like the search.
+  **Replace All** rewrites the matching files on disk (confirmed first). Oversized files, and
+  binaries with no document engine behind them, are skipped like the search; supported documents
+  are previewed and rewritten losslessly.
 - **Go to Symbol** (`⇧⌘O`) — a workspace outline picker: functions, structs/classes/enums/traits,
   types, modules, methods and Markdown headings across the tree (Rust, JS/TS, Python, Go, C/C++,
   Ruby, shell, Lua, stryke/Perl, Markdown); type to filter, `Enter` to jump.
@@ -151,6 +161,53 @@ results are fast and the editor stays the single source of truth.
 
 All surfaces are modal overlays (like the Open dialog) built from zgui-core widgets — no docked pane,
 so the embedded terminal is never reflowed.
+
+### Documents are searchable
+
+Ordinary project search skips any file whose first bytes contain a NUL, which is every office
+package and PDF — they are zip or binary containers. zmax-gui links
+[`zoffice-core`](https://github.com/MenkeTechnologies/zoffice-core) and
+[`zpdf-core`](https://github.com/MenkeTechnologies/zpdf-core) as rlibs into the Tauri host, so the
+walker gets a second branch: a file whose extension names a supported format is **parsed in-process**
+and contributes hits to the same result list as the source files around it. One query returns hits
+from `main.rs` and from `spec.docx` and from `budget.xlsx` together. There is no subprocess spawn and
+no IPC per file, and document parsing fans out across a thread pool (the text branch stays
+single-threaded and unchanged).
+
+| Format | Search hit locates | Replace |
+|---|---|---|
+| `.docx`, `.odt` | paragraph (`¶12`) | lossless package rewrite |
+| `.xlsx`, `.ods` | sheet + A1 cell (`Sheet1!B14`) | lossless package rewrite |
+| `.pptx`, `.odp` | slide (`slide 4`) | lossless package rewrite |
+| `.pdf` | page + on-page rect (`p. 7`) | whole text runs only — see below |
+
+*Lossless* is the literal claim and it is pinned by a test: after a replace, every zip entry other
+than the edited XML part is byte-identical, so styles, images, themes and revision marks survive a
+rewrite that a parse-and-re-serialize round trip would silently drop.
+
+Four behaviours differ from the text branch, and each is surfaced in the UI rather than hidden:
+
+- **Literal only.** Every engine `find` is a substring scan, so the document branch is skipped when
+  **regex** or **whole-word** is on, and the standalone document command rejects a regex query
+  outright instead of matching it literally.
+- **PDF replace matches whole runs, not substrings.** Searching `getUserName` in a PDF whose text run
+  reads `getUserNameFromDb` finds the hit and *cannot* rewrite it. Those rows are still listed, with
+  an honest `0` and the reason, rather than dropped as a silent no-match.
+- **Replace is case-sensitive** even when the search that found the hit was not, because the package
+  rewrite edits raw XML text nodes. A case-insensitive replace says so in the preview.
+- **Parse failures are reported**, not swallowed: a corrupt package appears as its own row with the
+  engine's message, so it never looks like "no matches".
+
+Dry run is measured, not predicted: each document is genuinely re-serialized into a temp file beside
+itself and the count is taken from what the engine actually did, then the temp is discarded. On
+apply, that temp is renamed over the source — same directory, so the replace is atomic and a failure
+part-way through can never leave a half-written document on disk.
+
+**Transform by Example** and **Reshape by Example** carry an *Apply to* selector with the same reach:
+a synthesized rule can run over the buffer (the `:%s` bridge, unchanged) or over the project's
+documents. Only a literal *replace* rule can cross that boundary — the other rules emit whole-line
+patterns, and a paragraph or a cell is not a line — so the rest are refused with that reason stated,
+never silently applied to nothing.
 
 ## MacVim-style GUI
 

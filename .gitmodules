@@ -25,3 +25,9 @@
 [submodule "crates/zgui-bridge"]
 	path = crates/zgui-bridge
 	url = https://github.com/MenkeTechnologies/zgui-bridge.git
+[submodule "crates/zoffice-core"]
+	path = crates/zoffice-core
+	url = https://github.com/MenkeTechnologies/zoffice-core.git
+[submodule "crates/zpdf-core"]
+	path = crates/zpdf-core
+	url = https://github.com/MenkeTechnologies/zpdf-core.git
