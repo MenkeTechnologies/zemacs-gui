@@ -75,7 +75,7 @@ fn doc_ext_kind(ext: &str) -> Option<FileKind> {
 }
 
 /// Lowercase extension of `path`, or an empty string when it has none.
-fn ext_of(path: &Path) -> String {
+pub(crate) fn ext_of(path: &Path) -> String {
     path.extension()
         .map(|e| e.to_string_lossy().to_lowercase())
         .unwrap_or_default()
@@ -234,7 +234,7 @@ impl Needle {
 }
 
 /// Trim and cap to [`SNIPPET_CHARS`], matching the text branch.
-fn snippet(text: &str) -> String {
+pub(crate) fn snippet(text: &str) -> String {
     text.trim().chars().take(SNIPPET_CHARS).collect()
 }
 

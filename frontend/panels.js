@@ -8,10 +8,12 @@
 // Surfaces are modal overlays (like the Open dialog), never a docked pane — a docked sidebar would
 // have to reflow the embedded terminal, which resolves differently in release WebKit. Entry points:
 // the ⌘K command palette (every action) plus ⌘P quick-open, ⌘E recent, ⌘⇧J find-in-files,
-// ⌘⇧E project files, ⌘⇧I snippets, ⌘⇧B git blame, and the rest (search & replace, go-to-symbol,
+// ⌘⇧E project files, ⌘⇧I snippets, ⌘⇧B git blame, ⌘⇧Y document blame, and the rest (search &
+// replace, go-to-symbol,
 // markers, bookmarks, git changes / history, compare files, project stats) via the palette.
 // The git tools, snippets and project stats are backed by the Rust `git_tools.rs` / `workbench_ext.rs`
-// commands (blame / log / show / stage / unstage / discard / diff, snippet CRUD, code stats).
+// commands (blame / log / show / stage / unstage / discard / diff, snippet CRUD, code stats), and
+// document blame by `doc_blame.rs`.
 (function () {
   "use strict";
 
@@ -622,6 +624,89 @@
       body.appendChild(list);
       ZGui.modal.open({
         title: T("zmax.panel.blame", "Blame") + " · " + path.slice(path.lastIndexOf("/") + 1),
+        body: body,
+        className: "zp-modal zp-blame-modal",
+        actions: [{ label: T("zmax.dialog.close", "Close"), close: true }],
+      });
+    }, function (err) { toast(String(err), "error"); });
+  }
+
+  // ── document blame (git blame at document-address granularity) ───────────────────────────────────
+  // The per-line blame above stops at binary documents: git sees one blob and reports
+  // "Binary files differ". `doc_blame` (doc_blame.rs) walks the revisions that touched the document,
+  // parses each one in-process with the office/PDF engines already linked into the host, and blames
+  // each ADDRESS — Sheet1!B14, p. 7 — instead of a line. Rows reuse `locatorLabel`, the same label
+  // function the document-search rows use, so one address renders identically everywhere.
+  function docBlame(path) {
+    if (!path) { pickFileThen(T("zmax.panel.doc_blame_file", "Blame a Document"), docBlame); return; }
+    invoke("doc_blame", { path: path }).then(function (res) {
+      var entries = (res && res.entries) || [];
+      var body = document.createElement("div");
+      body.className = "zp-blame zp-docblame";
+
+      // How deep the walk went. Derived from the result, never a literal: a capped walk that
+      // silently claimed full history would make every "at or before" row look exact.
+      var head = document.createElement("div");
+      head.className = "zp-count";
+      var scope = res.truncated
+        ? T("zmax.panel.doc_blame_capped", "blamed over the newest") + " " + res.revisions_walked +
+          " " + T("zmax.panel.doc_blame_of", "of") + " " + res.revisions_total + " " +
+          T("zmax.panel.doc_blame_revs", "revisions")
+        : res.revisions_walked + " " + T("zmax.panel.doc_blame_revs", "revisions");
+      head.textContent = entries.length + " " + T("zmax.panel.doc_blame_addresses", "addresses") + " · " + scope;
+      body.appendChild(head);
+
+      var list = document.createElement("div");
+      list.className = "zp-list zp-blame-list";
+      entries.forEach(function (en) {
+        var row = document.createElement("div");
+        row.className = "zp-row zp-blame-row";
+        var addr = document.createElement("span");
+        addr.className = "zp-docblame-addr";
+        addr.textContent = locatorLabel(en.locator);
+        var meta = document.createElement("span");
+        meta.className = "zp-blame-meta";
+        // The "≤" prefix is the honest marker for an attribution the capped window could not
+        // prove — the change is at or before this commit, not necessarily by it.
+        meta.textContent = (en.at_or_before ? "≤ " : "") + en.commit + " " + en.date + " " + en.author;
+        if (en.at_or_before) meta.classList.add("zp-docblame-approx");
+        var sum = document.createElement("span");
+        sum.className = "zp-row-primary zp-blame-sum";
+        sum.textContent = en.summary;
+        var val = document.createElement("span");
+        val.className = "zp-row-secondary zp-docblame-val";
+        val.textContent = en.text;
+        row.appendChild(addr);
+        row.appendChild(meta);
+        row.appendChild(sum);
+        row.appendChild(val);
+        // Same activation as a document search hit: hand the file to the OS default app and put the
+        // address on the clipboard, since `:open` cannot render a package in the PTY editor.
+        row.addEventListener("click", function () {
+          openDocument({ path: path, rel: path.slice(path.lastIndexOf("/") + 1), locator: en.locator });
+        });
+        list.appendChild(row);
+      });
+      if (!entries.length) {
+        var e = document.createElement("div");
+        e.className = "zp-count";
+        e.textContent = T("zmax.panel.no_doc_blame", "No blamable addresses in this document");
+        list.appendChild(e);
+      }
+      body.appendChild(list);
+
+      // Revisions that would not parse are a GAP in the attribution, not a non-event — the Rust
+      // side reports them rather than swallowing them, so the UI shows them.
+      if (res.errors && res.errors.length) {
+        var errs = document.createElement("div");
+        errs.className = "zp-count zp-docblame-errs";
+        errs.textContent = T("zmax.panel.doc_blame_skipped", "Unreadable revisions skipped") + ": " +
+          res.errors.map(function (p) { return p[0]; }).join(", ");
+        body.appendChild(errs);
+      }
+
+      ZGui.modal.open({
+        title: T("zmax.panel.doc_blame", "Document Blame") + " · " + path.slice(path.lastIndexOf("/") + 1),
         body: body,
         className: "zp-modal zp-blame-modal",
         actions: [{ label: T("zmax.dialog.close", "Close"), close: true }],
@@ -1730,6 +1815,7 @@
       { label: T("zmax.menu.project", "Project") + " ▸ " + T("zmax.panel.file_encoding", "File Encoding"), run: fileEncoding },
       { label: T("zmax.menu.git", "Git") + " ▸ " + T("zmax.panel.git_changes", "Git Changes"), run: gitPanel },
       { label: T("zmax.menu.git", "Git") + " ▸ " + T("zmax.panel.blame", "Blame") + "  ⇧⌘B", run: function () { gitBlame(); } },
+      { label: T("zmax.menu.git", "Git") + " ▸ " + T("zmax.panel.doc_blame", "Document Blame") + "  ⇧⌘Y", run: function () { docBlame(); } },
       { label: T("zmax.menu.git", "Git") + " ▸ " + T("zmax.panel.history", "File History"), run: function () { gitHistory(); } },
       { label: T("zmax.menu.git", "Git") + " ▸ " + T("zmax.panel.repo_log", "Repository Log"), run: gitLog },
       { label: T("zmax.menu.git", "Git") + " ▸ " + T("zmax.panel.commit_graph", "Commit Graph"), run: gitGraph },
@@ -1754,6 +1840,7 @@
     else if (k === "t" && e.shiftKey && !e.ctrlKey) markers();
     else if (k === "i" && e.shiftKey && !e.ctrlKey) snippets();
     else if (k === "b" && e.shiftKey && !e.ctrlKey) gitBlame();
+    else if (k === "y" && e.shiftKey && !e.ctrlKey) docBlame();
     else if (k === "b" && !e.shiftKey && !e.ctrlKey) bookmarks();
     else if ((k === "/" || k === "?") && e.shiftKey && !e.ctrlKey) commentToggle();
     else handled = false;

@@ -29,8 +29,9 @@ schemes, settings, CRT/splash). The editor is the same modal core; the window, c
 the GUI. Standard MenkeTechnologies GUI layout — see `GUI_APP_ARCHITECTURE.md` in the meta repo.
 
 The host is thin with one deliberate exception: the **office** and **PDF** engines link into it as
-rlibs so that project search and replace can see inside binary documents in-process. See
-[Documents are searchable](#documents-are-searchable).
+rlibs so that project search, replace and git blame can see inside binary documents in-process. See
+[Documents are searchable](#documents-are-searchable) and
+[Documents are blamable](#documents-are-blamable).
 
 ```
 zmax-gui/
@@ -42,6 +43,7 @@ zmax-gui/
 │   │                    file stats, git status/branch/diff — the project workbench backend
 │   ├─ editor_tools.rs   bookmarks, project search & replace, go-to-symbol, TODO/markers
 │   ├─ doc_search.rs     binary-document search & lossless replace (docx/odt/xlsx/ods/pptx/odp/pdf)
+│   ├─ doc_blame.rs      git blame at document-address granularity (xlsx/ods cell, pdf page)
 │   ├─ git_tools.rs      git blame, per-file history + show-commit, stage/unstage/discard, file compare
 │   ├─ git_ext.rs        git branches (list/checkout/create) + stash (save/list/pop/drop/show)
 │   ├─ text_tools.rs     file cleanup/convert, sort lines, find-definition, batch rename
@@ -140,6 +142,8 @@ results are fast and the editor stays the single source of truth.
   or open it in the editor.
 - **Git Blame** (`⇧⌘B`) — per-line commit / author / date for a chosen file (`git blame`
   `--line-porcelain`); click a line to jump there.
+- **Document Blame** (`⇧⌘Y`) — the same question for a binary document, answered at the document's
+  own addresses instead of at lines. See [Documents are blamable](#documents-are-blamable).
 - **File History** — the commit log touching a file (`git log --follow`); click a commit for the
   **diff it introduced** (`git show`), or open the file.
 - **Repository Log** — the whole repo's commit history (`git log`, newest first, with ref
@@ -197,6 +201,60 @@ Four behaviours differ from the text branch, and each is surfaced in the UI rath
   rewrite edits raw XML text nodes. A case-insensitive replace says so in the preview.
 - **Parse failures are reported**, not swallowed: a corrupt package appears as its own row with the
   engine's message, so it never looks like "no matches".
+
+### Documents are blamable
+
+`git blame` answers "who last changed this line". A `.xlsx` or a `.pdf` has no lines — git sees one
+binary blob and reports `Binary files differ`. The prevailing workaround is a `textconv` diff driver
+that shells out to `pandoc` or `unoconv` once per file per revision and flattens the document to a
+throwaway line stream, so the number that comes back is a line of the *rendering*, not an address in
+the document.
+
+**Document Blame** (`⇧⌘Y`, or the `⌘K` palette) answers it in the document's own coordinate system:
+
+```
+Sheet1!B14   a3f91c2e  2026-03-04  <author>  quarterly figures
+p. 7         5d10ba71  2026-01-19  <author>  redraft the appendix
+```
+
+The walk reuses what the search branch already built. `git log --follow` yields the revisions that
+touched the document (and the path it had at each, so a rename does not break the history);
+`git show <rev>:<path>` materializes each blob; each revision is parsed **in-process** by the same
+`zoffice-core` / `zpdf-core` rlibs described above — no `pandoc`, no `unoconv`, no converter
+subprocess per revision. Each address is then attributed to the newest revision whose content at
+that address differs from its predecessor's, which is why editing one cell does not re-blame the
+cells beside it even though their bytes inside the zip moved too. Rows carry the same `DocLocator`
+the search rows do, so an address renders identically in both panels.
+
+| Format | Blame address |
+|---|---|
+| `.xlsx`, `.ods` | sheet + A1 cell (`Sheet1!B14`) |
+| `.pdf` | page (`p. 7`) |
+
+Two limits, both surfaced in the panel rather than hidden:
+
+- **Only stable addresses are blamed.** Paragraph and slide indices *shift* when content is inserted
+  above them, so index-keyed attribution would mis-blame every unit below an insertion — wrong in a
+  way that looks right. `.docx` / `.odt` / `.pptx` / `.odp` are refused with that reason stated,
+  pending content-hash alignment between adjacent revisions. Cells and pages do not move.
+- **The revision walk is capped** (the panel reports how many revisions it walked out of how many
+  exist). The oldest revision in the window has no predecessor to compare against, so addresses that
+  did not change inside the window are marked `≤` — *changed at or before* that commit, not by it.
+  Revisions that fail to parse are listed as skipped, because a revision that could not be read is a
+  gap in the attribution rather than a non-event.
+
+**On prior art**, since the surrounding claims here are narrow on purpose. Address-granular *diff*
+for spreadsheets is not new: [ExcelCompare](https://github.com/na-ka-na/ExcelCompare) emits
+`DIFF Cell at Sheet1!A3`, [Git XL](https://www.xltrail.com/git-xl) and JetBrains'
+[ExcelDiffer](https://plugins.jetbrains.com/plugin/14847-exceldiffer) do cell-by-cell workbook
+comparison. Address-granular *authorship* is not new either — [xltrail](https://www.xltrail.com/)
+answers "who changed this value, when and why?" per cell. What is unclaimed elsewhere is the
+combination this panel occupies: **git-backed** (a real repository, not a proprietary cloud store),
+**multi-format** (spreadsheets *and* PDF, not Excel-only), and **in-editor** (a panel in the editor,
+not a web SaaS). No editor in the category does authorship on a binary document at all: VS Code
+renders `.docx` as [`Binary file not shown`](https://github.com/orgs/community/discussions/27893),
+JetBrains' [Diff Viewer](https://www.jetbrains.com/help/idea/differences-viewer.html) treats Office
+files as binary, and Zed, Neovim, Emacs and Sublime have no office/PDF blame path.
 
 Dry run is measured, not predicted: each document is genuinely re-serialized into a temp file beside
 itself and the count is taken from what the engine actually did, then the temp is discarded. On

@@ -3,6 +3,7 @@
 // MacVim-style GUI helpers (fs/window/open-intake), and wires the PTY's output/exit to the webview.
 
 mod bus;
+mod doc_blame;
 mod doc_search;
 mod edit_ops;
 mod editor_tools;
@@ -122,6 +123,8 @@ pub fn run() {
             project::find_files,
             project::search_project,
             doc_search::search_documents,
+            // Document blame (panels.js): git blame at document-address granularity (cell / page).
+            doc_blame::doc_blame,
             project::create_path,
             project::rename_path,
             project::delete_path,

@@ -142,6 +142,15 @@
 .zp-blame-meta { flex: none; width: 260px; font-family: monospace; font-size: 11px; color: var(--cyan, #05d9e8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .zp-blame-sum { flex: 1; margin-left: 0; }
 
+/* document blame overlay: address · commit/date/author · summary · current value.
+   Wider than the line-based panel because an address ("Sheet1!B14") is wider than a line number. */
+.zp-docblame { min-width: 760px; }
+.zp-docblame-addr { flex: none; width: 130px; font-family: monospace; font-size: 11px; color: var(--yellow, #f9e900); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.zp-docblame-val { flex: none; width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* An attribution the capped revision window could not prove, dimmed and prefixed "≤" in markup. */
+.zp-docblame-approx { color: var(--text-dim, #7a8ba8); }
+.zp-docblame-errs { color: var(--yellow, #f9e900); }
+
 /* project stats table (four columns; class-based widths so release WebKit keeps them) */
 .zp-stats-panel { display: flex; flex-direction: column; gap: 8px; min-width: 560px; }
 .zp-stats-head { font-family: monospace; font-size: 10px; color: var(--text-dim, #7a8ba8); }
